@@ -21,6 +21,178 @@ body {
   box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
+
+/* Contenedor general exclusivo para login */
+.form-container-login {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 80px 25px 30px 25px; /* más padding-top */
+  background-color: #FFF1E6;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(29, 29, 27, 0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #1D1D1B;
+}
+
+.form-container-login h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.form-container-login input[type="email"],
+.form-container-login input[type="password"] {
+  width: 100%;
+  padding: 18px 15px 12px 15px; /* más padding-top */
+  margin-bottom: 15px;
+  border: 1.5px solid #1D1D1B;
+  border-radius: 5px;
+  font-size: 1rem;
+  box-sizing: border-box; /* para que el padding no haga overflow */
+  transition: border-color 0.3s ease;
+  color: #1D1D1B;
+  background-color: #fff;
+}
+
+.form-container-login input[type="email"]:focus,
+.form-container-login input[type="password"]:focus {
+  border-color: #E51B23;
+  outline: none;
+}
+
+.form-container-login .error {
+  color: #E51B23;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.form-container-login button {
+  width: 100%;
+  background-color: #E51B23;
+  color: white;
+  padding: 14px 0; /* un poco más grande el botón */
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 1.1rem;
+}
+
+.form-container-login button:hover:not(:disabled) {
+  background-color: #b3151a; /* rojo más oscuro */
+}
+
+.form-container-login button:disabled {
+  background-color: #f1999f; /* rojo clarito */
+  cursor: not-allowed;
+}
+
+.form-container-login p {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #1D1D1B;
+}
+
+.form-container-login p a {
+  color: #E51B23;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.form-container-login p a:hover {
+  text-decoration: underline;
+}
+
+/* Contenedor general exclusivo para registro */
+.form-register {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 80px 25px 30px 25px; /* padding-top grande igual */
+  background-color: #FFF1E6;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(29, 29, 27, 0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #1D1D1B;
+}
+
+.form-register h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.form-register input[type="text"],
+.form-register input[type="email"],
+.form-register input[type="password"] {
+  width: 100%;
+  padding: 18px 15px 12px 15px;
+  margin-bottom: 15px;
+  border: 1.5px solid #1D1D1B;
+  border-radius: 5px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+  color: #1D1D1B;
+  background-color: #fff;
+}
+
+.form-register input[type="text"]:focus,
+.form-register input[type="email"]:focus,
+.form-register input[type="password"]:focus {
+  border-color: #E51B23;
+  outline: none;
+}
+
+.form-register .error {
+  color: #E51B23;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.form-register button {
+  width: 100%;
+  background-color: #E51B23;
+  color: white;
+  padding: 14px 0;
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 1.1rem;
+}
+
+.form-register button:hover:not(:disabled) {
+  background-color: #b3151a;
+}
+
+.form-register button:disabled {
+  background-color: #f1999f;
+  cursor: not-allowed;
+}
+
+.form-register p {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #1D1D1B;
+}
+
+.form-register p a {
+  color: #E51B23;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.form-register p a:hover {
+  text-decoration: underline;
+}
+
+
 /* Boton Cerrar Sesion */
 .logout-btn {
   padding: 10px 10px;
@@ -498,7 +670,7 @@ VIDEO CONTAINER
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 70px 20px;
   text-align: center;
 }
 

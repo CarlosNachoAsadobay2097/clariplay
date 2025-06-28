@@ -7,8 +7,8 @@ import { useNavigate } from 'react-router-dom';
 function RegisterTeacher() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [claveSecreta, setClaveSecreta] = useState('');
   const [error, setError] = useState('');
 
@@ -31,8 +31,8 @@ function RegisterTeacher() {
       await setDoc(doc(db, 'users', user.uid), {
         role: 'teacher',
         email: user.email,
-        nombre,
-        apellido,
+        firstName,
+        lastName,
       });
 
       navigate('/dashboard');
@@ -43,21 +43,21 @@ function RegisterTeacher() {
   };
 
   return (
-    <div className="form-container">
+    <div className="form-register">
       <h2>Registro Profesor</h2>
       <form onSubmit={handleRegister}>
         <input
           type="text"
           placeholder="Nombre"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
           required
         />
         <input
           type="text"
           placeholder="Apellido"
-          value={apellido}
-          onChange={(e) => setApellido(e.target.value)}
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
           required
         />
         <input

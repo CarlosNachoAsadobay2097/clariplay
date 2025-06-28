@@ -43,7 +43,7 @@ function RegisterStudent() {
   };
 
   return (
-    <div className="form-container">
+    <div className="form-register">
       <h2>Registro de Estudiante 👩‍🎓</h2>
       <form onSubmit={handleRegister}>
         <input
