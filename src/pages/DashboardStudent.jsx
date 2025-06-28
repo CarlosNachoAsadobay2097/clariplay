@@ -22,7 +22,6 @@ import HomeStudent from './HomeStudent';
 
 export default function DashboardStudent() {
   const [selectedSection, setSelectedSection] = useState('lessons');
-  const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [feedbackLessonId, setFeedbackLessonId] = useState(null);
 
@@ -30,7 +29,6 @@ export default function DashboardStudent() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
         const docRef = doc(db, 'users', firebaseUser.uid);
         const docSnap = await getDoc(docRef);
 
@@ -41,7 +39,6 @@ export default function DashboardStudent() {
           setUserData(null);
         }
       } else {
-        setUser(null);
         setUserData(null);
       }
     });

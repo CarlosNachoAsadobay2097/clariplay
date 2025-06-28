@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAuth, updateProfile, updateEmail, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, updateEmail, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -12,53 +12,68 @@ export default function ProfileSection() {
     courses: [],
   });
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({ ...userData });
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const docRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(docRef);
+
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserData({
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: user.email,
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            email: user.email || '',
             courses: data.courses || [],
           });
           setFormData({
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: user.email,
+            firstName: data.firstName || '',
+            lastName: data.lastName || '',
+            email: user.email || '',
           });
         }
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
     const user = auth.currentUser;
+    if (!user) return;
+
     try {
+      // Actualizar datos en Firestore
       await updateDoc(doc(db, 'users', user.uid), {
         firstName: formData.firstName,
         lastName: formData.lastName,
       });
 
+      // Actualizar correo en Firebase Auth si cambió
       if (formData.email !== user.email) {
         await updateEmail(user, formData.email);
       }
 
-      setUserData({ ...formData, courses: userData.courses });
+      setUserData((prev) => ({
+        ...prev,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+      }));
       setEditing(false);
-    } catch (err) {
-      console.error('Error actualizando perfil:', err);
+    } catch (error) {
+      console.error('Error actualizando perfil:', error);
+      alert('Ocurrió un error al actualizar tu perfil. Intenta nuevamente.');
     }
   };
 
@@ -112,7 +127,7 @@ export default function ProfileSection() {
         </div>
       </div>
 
-      <div className="student-courses">
+      <div className="student-courses" style={{ marginTop: '2rem' }}>
         <h3>Cursos inscritos:</h3>
         {userData.courses.length > 0 ? (
           <ul>
@@ -125,7 +140,7 @@ export default function ProfileSection() {
         )}
       </div>
 
-      <div className="danger-zone">
+      <div className="danger-zone" style={{ marginTop: '2rem' }}>
         <h4>⚠️ Eliminar cuenta</h4>
         <button className="delete-account-btn" disabled>
           Eliminar mi cuenta
