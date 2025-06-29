@@ -5,15 +5,17 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
+// 🔥 Configuración del nuevo proyecto ClariPlay
 const firebaseConfig = {
-  apiKey: "AIzaSyC5_ROr3x_G8kO1X6KvvW-YOmheGK8etwE",
-  authDomain: "musiconexion.firebaseapp.com",
-  projectId: "musiconexion",
-  storageBucket: "musiconexion.appspot.com", // ✅ CORREGIDO
-  messagingSenderId: "175805742821",
-  appId: "1:175805742821:web:07a99cc7d29ae2829cde0c"
+  apiKey: "AIzaSyBKGAcU-lSRJBgvfogHELJV6CAQzxhOT4g",
+  authDomain: "clariplay.firebaseapp.com",
+  projectId: "clariplay",
+  storageBucket: "clariplay.appspot.com", // ⚠️ CORREGIDO
+  messagingSenderId: "915804289978",
+  appId: "1:915804289978:web:94ccb97c991a30da4ebb83"
 };
 
+// Inicialización de Firebase y exportación de servicios
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);

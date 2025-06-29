@@ -8,7 +8,7 @@ function Landing() {
     <div className="landing">
       <div className="hero">
         <div className="hero-content">
-            <img src={logo} alt="Musiconexión Logo" className="hero-logo" />
+            <img src={logo} alt="Clariplay Logo" className="hero-logo" />
             <p>Una nueva forma de aprender, practicar y compartir música.</p>
             <Link to="/register" className="cta-button">Empieza ahora</Link>
         </div>
@@ -16,16 +16,16 @@ function Landing() {
 
       <section className="about">
         
-            <h2>¿Qué es Musiconexión?</h2>
+            <h2>¿Qué es Clariplay?</h2>
 
             <img 
                 src={require('../assets/about-image.jpg')} 
-                alt="Sobre Musiconexión" 
+                alt="Sobre Clariplay" 
                 className="about-image" 
             />
 
             <p>
-                Musiconexión es una plataforma educativa donde estudiantes y profesores de música pueden compartir lecciones, partituras interactivas y grabaciones para retroalimentación directa.
+                Clariplay es una plataforma educativa donde estudiantes y profesores de música pueden compartir lecciones, partituras interactivas y grabaciones para retroalimentación directa.
             </p>
 
             <ul className="features-list">
@@ -52,7 +52,7 @@ function Landing() {
             width="100%"
             height="415"
             src="https://www.youtube.com/embed/JRy1fz2MOPk?si=FXn1oy1W3Xnh9eTc"
-            title="Presentación Musiconexión"
+            title="Presentación Clariplay"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
