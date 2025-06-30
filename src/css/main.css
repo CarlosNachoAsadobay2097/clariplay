@@ -8,6 +8,15 @@ body {
   color: #FFF1E6;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Solo cuando estamos en el dashboard */
+.body-dashboard {
+  overflow: hidden !important;
+  height: 100vh;
 }
 
 /* Contenedor general */
@@ -236,7 +245,7 @@ input {
 button, .cta-button {
   width: 50%;
   padding: 12px;
-  background-color: #E51B23;
+  background-color: #1d1d1b;
   border: none;
   border-radius: 6px;
   font-size: 16px;
@@ -537,6 +546,10 @@ VIDEO CONTAINER
     height: 50px;
   }
 
+    .logo-dash {
+    display: none;
+  }
+
   /* Hero Section */
   .hero {
     height: 75vh;
@@ -735,19 +748,120 @@ ESTILOS DASHBOARD-STUDENT
 .dashboard {
   display: flex;
   height: 100vh;
-  font-family: 'Segoe UI', sans-serif;
+  overflow: hidden;
 }
 
-/* Sidebar */
-.sidebar {
+/* Menú lateral fijo */
+.menu-dashboard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
   width: 250px;
   background-color: #1D1D1B;
   color: white;
   padding: 1.5rem 1rem;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  z-index: 900;
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
 }
 
+.menu-dashboard.collapsed .nav button {
+  justify-content: center;
+}
+
+.menu-dashboard.collapsed .nav button span {
+  display: none; /* oculta el texto y deja solo el ícono */
+}
+
+
+
+.menu-dashboard.collapsed {
+  width: 40px;
+  padding: 1rem 0.25rem; /* padding también más pequeño */
+}
+
+/* Normal (menú expandido) */
+.content {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+  transition: all 0.3s ease;
+}
+
+/* Colapsado */
+.menu-dashboard.collapsed ~ .content {
+  margin-left: 40px;
+  width: calc(100% - 40px);
+}
+
+
+
+.collapse-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  position: absolute;
+  bottom: 1rem; /* en lugar de top */
+  right: -15px;
+  background-color: #1D1D1B;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+
+
+@media (max-width: 768px) {
+  .menu-dashboard {
+    padding-top: 5em;
+    position: fixed;
+    top: 60px; /* Altura del Navbar superior, ajústalo si es diferente */
+    left: 0;
+    height: calc(100vh - 120px); /* Altura total menos navbar y bottom-menu */
+    width: 250px;
+    background-color: #1D1D1B;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 999; /* Asegúrate de que esté sobre el contenido */
+    overflow-y: auto;
+  }
+
+  .menu-dashboard.active {
+    transform: translateX(0);
+  }
+
+  .content {
+    margin-left: 0; /* en móviles no debe tener margen lateral */
+    width: 100%;
+  }
+}
+
+/* Ocultar el botón de colapsar en móviles */
+@media (max-width: 768px) {
+  .collapse-toggle {
+    display: none;
+  }
+}
+
+
+
 .logo {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+}
+
+.logo-dash {
   font-size: 1.6rem;
   font-weight: bold;
   margin-bottom: 2rem;
@@ -776,13 +890,25 @@ ESTILOS DASHBOARD-STUDENT
   color: #E51B23;
 }
 
-/* Contenido */
+/* Contenido principal al lado derecho del menú */
+
 .content {
-  flex: 1;
+  margin-left: 250px; /* SOLO para escritorio */
   padding: 2rem;
-  background-color: #FFF1E6;
+  width: calc(100% - 250px);
   overflow-y: auto;
+  height: 100vh;
 }
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;        /* <- esto soluciona el desplazamiento */
+    width: 100%;           /* <- ocupa toda la pantalla */
+    padding: 0%;         /* <- opcional, más cómodo en móviles */
+    padding-bottom: 200px;
+  }
+}
+
 
 .section-title {
   font-size: 1.75rem;
@@ -798,8 +924,65 @@ ESTILOS DASHBOARD-STUDENT
   color: #1D1D1B;
 }
 
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+  }
+
+  .sidebar.active {
+    transform: translateX(0);
+  }
+
+  .section-content {
+    padding-top: 4em;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  margin: 1rem;
+  cursor: pointer;
+  z-index: 1100;
+}
+
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+}
+
+/* Oculta en móvil */
+.hide-on-mobile {
+  display: inline-block;
+}
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none;
+  }
+}
+
+
 /*------------------------------
-ESTILOS PARA LA SECCION DE LA DASHBOARD-STUDENT
+ESTILOS PARA LA SECCION DE INICIO
 ------------------------------*/
 
 .home-welcome {

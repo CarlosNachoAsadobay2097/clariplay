@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import logoTop from '../assets/Logo_3.svg';
 import logoBottom from '../assets/Logo_8.svg';
 
-function Navbar() {
+function Navbar({ onToggleSidebar }) {
   const [user] = useAuthState(auth);
   const [role, setRole] = useState(null);
 
@@ -31,11 +31,10 @@ function Navbar() {
     signOut(auth);
   };
 
-  // Determinar la ruta del logo
   const getLogoLink = () => {
     if (user && role === 'student') return '/dashboard-student';
     if (user && role === 'teacher') return '/dashboard-teacher';
-    return '/'; // si no hay sesión o no se ha detectado el rol aún
+    return '/';
   };
 
   return (
@@ -49,7 +48,7 @@ function Navbar() {
 
         <div className="navbar-right">
           {user ? (
-            <button onClick={handleLogout} className="logout-btn link-underlined">
+            <button onClick={handleLogout} className="logout-btn link-underlined hide-on-mobile">
               Cerrar sesión
             </button>
           ) : (
@@ -80,13 +79,24 @@ function Navbar() {
             </Link>
           </>
         ) : (
-          <Link to={getLogoLink()} className="menu-center">
-            <img src={logoBottom} alt="Musiconexión" />
-          </Link>
+          <>
+            <button className="menu-button" onClick={onToggleSidebar}>
+              <i className="fas fa-bars"></i>
+              <span>Menú</span>
+            </button>
+
+            <Link to={getLogoLink()} className="menu-center">
+              <img src={logoBottom} alt="Musiconexión" />
+            </Link>
+
+            <button className="menu-button" onClick={handleLogout}>
+              <i className="fas fa-sign-out-alt"></i>
+              <span>Salir</span>
+            </button>
+          </>
         )}
       </div>
     </nav>
-
   );
 }
 

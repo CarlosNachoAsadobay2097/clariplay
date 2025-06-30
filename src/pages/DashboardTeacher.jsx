@@ -11,7 +11,11 @@ import {
   faUsers,
   faComments,
   faUserCog,
+  faAngleLeft,
+  faAngleRight,
 } from '@fortawesome/free-solid-svg-icons';
+
+import Navbar from '../components/Navbar';
 
 import HomeTeacher from './HomeTeacher';
 import CoursesTeacherSection from './CoursesTeacherSection';
@@ -23,8 +27,13 @@ import ProfileSectionTeacher from './ProfileSectionTeacher';
 export default function DashboardTeacher() {
   const [selectedSection, setSelectedSection] = useState('home');
   const [userData, setUserData] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Para móviles
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Para escritorio
 
   useEffect(() => {
+    // Activar la clase body-dashboard al entrar al dashboard
+    document.body.classList.add('body-dashboard');
+
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -34,7 +43,6 @@ export default function DashboardTeacher() {
         if (docSnap.exists()) {
           setUserData(docSnap.data());
         } else {
-          console.log('No existe documento en Firestore para este usuario');
           setUserData(null);
         }
       } else {
@@ -42,8 +50,18 @@ export default function DashboardTeacher() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      // Limpiar la suscripción y remover clase al desmontar el componente
+      unsubscribe();
+      document.body.classList.remove('body-dashboard');
+    };
   }, []);
+
+
+  const handleNavClick = (section) => {
+    setSelectedSection(section);
+    setIsSidebarOpen(false); // Cerrar menú en móvil
+  };
 
   const renderContent = () => {
     if (!userData) {
@@ -73,44 +91,59 @@ export default function DashboardTeacher() {
   };
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <h2 className="logo">🎵 Musiconexión</h2>
-        <nav className="nav">
-          <button onClick={() => setSelectedSection('home')}>
-            <FontAwesomeIcon icon={faHome} /> Inicio
-          </button>
-          <button onClick={() => setSelectedSection('courses')}>
-            <FontAwesomeIcon icon={faChalkboardTeacher} /> Mis cursos
-          </button>
-          <button onClick={() => setSelectedSection('lessons')}>
-            <FontAwesomeIcon icon={faBookOpen} /> Crear lecciones
-          </button>
-          <button onClick={() => setSelectedSection('students')}>
-            <FontAwesomeIcon icon={faUsers} /> Estudiantes
-          </button>
-          <button onClick={() => setSelectedSection('feedback')}>
-            <FontAwesomeIcon icon={faComments} /> Retroalimentación
-          </button>
-          <button onClick={() => setSelectedSection('profile')}>
-            <FontAwesomeIcon icon={faUserCog} /> Perfil
-          </button>
-        </nav>
-      </aside>
+    <>
+      <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-      <main className="content">
-        <h1 className="section-title">
-          {{
-            home: 'Inicio',
-            courses: 'Mis cursos',
-            lessons: 'Crear lecciones',
-            students: 'Estudiantes',
-            feedback: 'Retroalimentación',
-            profile: 'Perfil',
-          }[selectedSection]}
-        </h1>
-        <div className="section-content">{renderContent()}</div>
-      </main>
-    </div>
+      <div className="dashboard">
+        <aside
+          className={`menu-dashboard ${isSidebarOpen ? 'active' : ''} ${
+            isSidebarCollapsed ? 'collapsed' : ''
+          }`}
+        >
+          <h2 className="logo">Clariplay</h2>
+          <nav className="nav">
+            <button onClick={() => handleNavClick('home')}>
+              <FontAwesomeIcon icon={faHome} /> <span>Inicio</span>
+            </button>
+            <button onClick={() => handleNavClick('courses')}>
+              <FontAwesomeIcon icon={faChalkboardTeacher} /> <span>Mis cursos</span>
+            </button>
+            <button onClick={() => handleNavClick('lessons')}>
+              <FontAwesomeIcon icon={faBookOpen} /> <span>Crear lecciones</span>
+            </button>
+            <button onClick={() => handleNavClick('students')}>
+              <FontAwesomeIcon icon={faUsers} /> <span>Estudiantes</span>
+            </button>
+            <button onClick={() => handleNavClick('feedback')}>
+              <FontAwesomeIcon icon={faComments} /> <span>Retroalimentación</span>
+            </button>
+            <button onClick={() => handleNavClick('profile')}>
+              <FontAwesomeIcon icon={faUserCog} /> <span>Perfil</span>
+            </button>
+
+            {/* Solo en escritorio */}
+            <div className="collapse-toggle desktop-only">
+              <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
+                <FontAwesomeIcon icon={isSidebarCollapsed ? faAngleRight : faAngleLeft} />
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        <main className="content">
+          <h1 className="section-title">
+            {{
+              home: 'Inicio',
+              courses: 'Mis cursos',
+              lessons: 'Crear lecciones',
+              students: 'Estudiantes',
+              feedback: 'Retroalimentación',
+              profile: 'Perfil',
+            }[selectedSection]}
+          </h1>
+          <div className="section-content">{renderContent()}</div>
+        </main>
+      </div>
+    </>
   );
 }

@@ -1,49 +1,41 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../assets/Logo_6.svg'; // Asegúrate de tener el logo en esta ruta
-//import './Landing.css';
+import logo from '../assets/Logo_6.svg';
 
 function Landing() {
+  useEffect(() => {
+    // Quita clase del dashboard si existe
+    document.body.classList.remove('body-dashboard');
+    document.body.classList.add('body-landing');
+
+    return () => {
+      document.body.classList.remove('body-landing');
+    };
+  }, []);
+
   return (
     <div className="landing">
       <div className="hero">
         <div className="hero-content">
-            <img src={logo} alt="Clariplay Logo" className="hero-logo" />
-            <p>Una nueva forma de aprender, practicar y compartir música.</p>
-            <Link to="/register" className="cta-button">Empieza ahora</Link>
+          <img src={logo} alt="Clariplay Logo" className="hero-logo" />
+          <p>Una nueva forma de aprender, practicar y compartir música.</p>
+          <Link to="/register" className="cta-button">Empieza ahora</Link>
         </div>
       </div>
 
       <section className="about">
-        
-            <h2>¿Qué es Clariplay?</h2>
-
-            <img 
-                src={require('../assets/about-image.jpg')} 
-                alt="Sobre Clariplay" 
-                className="about-image" 
-            />
-
-            <p>
-                Clariplay es una plataforma educativa donde estudiantes y profesores de música pueden compartir lecciones, partituras interactivas y grabaciones para retroalimentación directa.
-            </p>
-
-            <ul className="features-list">
-                <li>
-                <i className="fas fa-music"></i>
-                <span>Editor de partituras fácil de usar</span>
-                </li>
-                <li>
-                <i className="fas fa-headphones-alt"></i>
-                <span>Graba tu interpretación desde la plataforma</span>
-                </li>
-                <li>
-                <i className="fas fa-chalkboard-teacher"></i>
-                <span>Recibe calificaciones y consejos reales</span>
-                </li>
-            </ul>
-     </section>
-
+        <h2>¿Qué es Clariplay?</h2>
+        <img src={require('../assets/about-image.jpg')} alt="Sobre Clariplay" className="about-image" />
+        <p>
+          Clariplay es una plataforma educativa donde estudiantes y profesores de música pueden compartir
+          lecciones, partituras interactivas y grabaciones para retroalimentación directa.
+        </p>
+        <ul className="features-list">
+          <li><i className="fas fa-music"></i><span>Editor de partituras fácil de usar</span></li>
+          <li><i className="fas fa-headphones-alt"></i><span>Graba tu interpretación desde la plataforma</span></li>
+          <li><i className="fas fa-chalkboard-teacher"></i><span>Recibe calificaciones y consejos reales</span></li>
+        </ul>
+      </section>
 
       <section className="video-section">
         <h2>Conoce más</h2>
@@ -58,7 +50,6 @@ function Landing() {
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
           />
-
         </div>
       </section>
     </div>

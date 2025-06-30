@@ -11,8 +11,11 @@ import {
   faBook,
   faComments,
   faUserCog,
+  faAngleLeft,
+  faAngleRight,
 } from '@fortawesome/free-solid-svg-icons';
 
+import Navbar from '../components/Navbar';
 import LessonsSection from './LessonsSection';
 import GradesSection from './GradesSection';
 import CoursesSection from './CoursesSection';
@@ -25,7 +28,13 @@ export default function DashboardStudent() {
   const [userData, setUserData] = useState(null);
   const [feedbackLessonId, setFeedbackLessonId] = useState(null);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // móvil
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // escritorio
+
   useEffect(() => {
+    // Activar la clase body-dashboard al entrar al dashboard
+    document.body.classList.add('body-dashboard');
+
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -35,7 +44,6 @@ export default function DashboardStudent() {
         if (docSnap.exists()) {
           setUserData(docSnap.data());
         } else {
-          console.log('No existe documento en Firestore para este usuario');
           setUserData(null);
         }
       } else {
@@ -43,29 +51,23 @@ export default function DashboardStudent() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      // Limpiar la suscripción y remover clase al desmontar el componente
+      unsubscribe();
+      document.body.classList.remove('body-dashboard');
+    };
   }, []);
+
 
   const renderContent = () => {
     switch (selectedSection) {
       case 'home':
-        return (
-          <HomeStudent
-            user={{
-              firstName: userData?.firstName || 'Estudiante',
-              lastName: userData?.lastName || '',
-            }}
-          />
-        );
+        return <HomeStudent user={{ firstName: userData?.firstName || 'Estudiante', lastName: userData?.lastName || '' }} />;
       case 'lessons':
-        return (
-          <LessonsSection
-            onNavigateToFeedback={(lessonId) => {
-              setFeedbackLessonId(lessonId);
-              setSelectedSection('feedback');
-            }}
-          />
-        );
+        return <LessonsSection onNavigateToFeedback={(lessonId) => {
+          setFeedbackLessonId(lessonId);
+          setSelectedSection('feedback');
+        }} />;
       case 'grades':
         return <GradesSection />;
       case 'courses':
@@ -79,45 +81,61 @@ export default function DashboardStudent() {
     }
   };
 
-  return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <h2 className="logo">🎵 Musiconexión</h2>
-        <nav className="nav">
-          <button onClick={() => setSelectedSection('home')}>
-            <FontAwesomeIcon icon={faHome} /> Inicio
-          </button>
-          <button onClick={() => setSelectedSection('lessons')}>
-            <FontAwesomeIcon icon={faMusic} /> Mis lecciones
-          </button>
-          <button onClick={() => setSelectedSection('grades')}>
-            <FontAwesomeIcon icon={faClipboard} /> Calificaciones
-          </button>
-          <button onClick={() => setSelectedSection('courses')}>
-            <FontAwesomeIcon icon={faBook} /> Cursos
-          </button>
-          <button onClick={() => setSelectedSection('feedback')}>
-            <FontAwesomeIcon icon={faComments} /> Retroalimentación
-          </button>
-          <button onClick={() => setSelectedSection('profile')}>
-            <FontAwesomeIcon icon={faUserCog} /> Perfil
-          </button>
-        </nav>
-      </aside>
+  const handleNavClick = (section) => {
+    setSelectedSection(section);
+    setIsSidebarOpen(false); // solo en móvil, cerrar al hacer clic
+  };
 
-      <main className="content">
-        <h1 className="section-title">
-          {{
-            lessons: 'Mis lecciones',
-            grades: 'Calificaciones',
-            courses: 'Cursos',
-            feedback: 'Retroalimentación',
-            profile: 'Perfil',
-            home: 'Inicio',
-          }[selectedSection]}
-        </h1>
-        <div className="section-content">{renderContent()}</div>
-      </main>
-    </div>
+  return (
+    <>
+      <Navbar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+      <div className="dashboard">
+        <aside className={`menu-dashboard ${isSidebarOpen ? 'active' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+          <h2 className="logo">Clariplay</h2>
+          <nav className="nav">
+            <button onClick={() => handleNavClick('home')}>
+              <FontAwesomeIcon icon={faHome} /> <span>Inicio</span>
+            </button>
+            <button onClick={() => handleNavClick('lessons')}>
+              <FontAwesomeIcon icon={faMusic} /> <span>Mis lecciones</span>
+            </button>
+            <button onClick={() => handleNavClick('grades')}>
+              <FontAwesomeIcon icon={faClipboard} /> <span>Calificaciones</span>
+            </button>
+            <button onClick={() => handleNavClick('courses')}>
+              <FontAwesomeIcon icon={faBook} /> <span>Cursos</span>
+            </button>
+            <button onClick={() => handleNavClick('feedback')}>
+              <FontAwesomeIcon icon={faComments} /> <span>Retroalimentación</span>
+            </button>
+            <button onClick={() => handleNavClick('profile')}>
+              <FontAwesomeIcon icon={faUserCog} /> <span>Perfil</span>
+            </button>
+
+            {/* Botón solo visible en escritorio */}
+            <div className="collapse-toggle desktop-only">
+              <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
+                <FontAwesomeIcon icon={isSidebarCollapsed ? faAngleRight : faAngleLeft} />
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        <main className="content">
+          <h1 className="section-title">
+            {{
+              lessons: 'Mis lecciones',
+              grades: 'Calificaciones',
+              courses: 'Cursos',
+              feedback: 'Retroalimentación',
+              profile: 'Perfil',
+              home: 'Inicio',
+            }[selectedSection]}
+          </h1>
+          <div className="section-content">{renderContent()}</div>
+        </main>
+      </div>
+    </>
   );
 }
