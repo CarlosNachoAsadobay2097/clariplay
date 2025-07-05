@@ -10,10 +10,11 @@ const firebaseConfig = {
   apiKey: "AIzaSyA4f3Ysn05Kh6lgfxTwRQJ5ddyZmHzPAeE",
   authDomain: "clariplay-86df4.firebaseapp.com",
   projectId: "clariplay-86df4",
-  storageBucket: "clariplay-86df4.appspot.com", // ⚠️ corregido .app -> .com
+  storageBucket: "clariplay-86df4.firebasestorage.app", // ✅ esta es la real
   messagingSenderId: "367526023581",
   appId: "1:367526023581:web:68313f71594cfa00849f74"
 };
+
 
 // Inicialización de Firebase
 const app = initializeApp(firebaseConfig);
