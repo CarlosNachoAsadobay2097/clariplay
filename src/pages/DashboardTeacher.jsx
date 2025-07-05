@@ -100,7 +100,7 @@ export default function DashboardTeacher() {
             isSidebarCollapsed ? 'collapsed' : ''
           }`}
         >
-          <h2 className="logo">Clariplay</h2>
+          <h2 className="logo-dash">Clariplay</h2>
           <nav className="nav">
             <button onClick={() => handleNavClick('home')}>
               <FontAwesomeIcon icon={faHome} /> <span>Inicio</span>

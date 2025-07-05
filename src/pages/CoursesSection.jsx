@@ -6,8 +6,6 @@ export default function CoursesSection() {
       teacher: 'Juan Pérez',
       instrument: 'Guitarra',
       level: 'Principiante',
-      modality: 'Virtual',
-      schedule: 'Lunes y miércoles - 18h00',
     },
     {
       id: 2,
@@ -15,8 +13,6 @@ export default function CoursesSection() {
       teacher: 'María López',
       instrument: 'Piano',
       level: 'Intermedio',
-      modality: 'Presencial',
-      schedule: 'Martes y jueves - 15h30',
     },
   ];
 
@@ -27,8 +23,6 @@ export default function CoursesSection() {
       teacher: 'Carlos Jiménez',
       instrument: 'Violín',
       level: 'Básico',
-      modality: 'Virtual',
-      schedule: 'Sábados - 10h00',
     },
     {
       id: 4,
@@ -36,14 +30,12 @@ export default function CoursesSection() {
       teacher: 'Ana Torres',
       instrument: 'Voz',
       level: 'Avanzado',
-      modality: 'Virtual',
-      schedule: 'Viernes - 17h00',
     },
   ];
 
   return (
     <div className="courses-section">
-      <h2>🎓 Cursos Inscritos</h2>
+      <h2>Cursos Inscritos</h2>
       <div className="course-list">
         {enrolledCourses.map((course) => (
           <div key={course.id} className="course-card enrolled">
@@ -51,13 +43,11 @@ export default function CoursesSection() {
             <p><strong>Profesor:</strong> {course.teacher}</p>
             <p><strong>Instrumento:</strong> {course.instrument}</p>
             <p><strong>Nivel:</strong> {course.level}</p>
-            <p><strong>Modalidad:</strong> {course.modality}</p>
-            <p><strong>Horario:</strong> {course.schedule}</p>
           </div>
         ))}
       </div>
 
-      <h2 style={{ marginTop: '2rem' }}>🆕 Cursos Disponibles</h2>
+      <h2 style={{ marginTop: '2rem' }}>Cursos Disponibles</h2>
       <div className="course-list">
         {availableCourses.map((course) => (
           <div key={course.id} className="course-card available">
@@ -65,8 +55,6 @@ export default function CoursesSection() {
             <p><strong>Profesor:</strong> {course.teacher}</p>
             <p><strong>Instrumento:</strong> {course.instrument}</p>
             <p><strong>Nivel:</strong> {course.level}</p>
-            <p><strong>Modalidad:</strong> {course.modality}</p>
-            <p><strong>Horario:</strong> {course.schedule}</p>
             <div className="course-buttons">
               <button className="enroll-btn">Inscribirse</button>
               <button className="details-btn">Ver más</button>

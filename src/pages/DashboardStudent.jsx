@@ -92,7 +92,7 @@ export default function DashboardStudent() {
 
       <div className="dashboard">
         <aside className={`menu-dashboard ${isSidebarOpen ? 'active' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-          <h2 className="logo">Clariplay</h2>
+          <h2 className="logo-dash">Clariplay</h2>
           <nav className="nav">
             <button onClick={() => handleNavClick('home')}>
               <FontAwesomeIcon icon={faHome} /> <span>Inicio</span>
