@@ -16,7 +16,7 @@ export default function CoursesTeacherSection() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, 'courses'), where('teacherId', '==', user.uid));
+    const q = query(collection(db, 'courses'), where('createdBy', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCourses(data);
@@ -43,8 +43,9 @@ export default function CoursesTeacherSection() {
     try {
       await addDoc(collection(db, 'courses'), {
         ...newCourse,
-        teacherId: user.uid,
-        createdAt: new Date(),
+        teacherId: user.uid,     // Opcional, por compatibilidad
+        createdBy: user.uid,     // Obligatorio según reglas de Firestore
+        createdAt: new Date(),   // Puedes usar serverTimestamp si prefieres
       });
       setNewCourse({ title: '', level: '', instrument: '' });
       setShowAddForm(false);
