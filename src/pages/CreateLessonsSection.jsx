@@ -137,6 +137,8 @@ export default function CreateLessonsSection() {
     setScoreData({ notes: [], audioUrl: null, xmlContent: null });
   };
 
+  const clean = (obj) => Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+
   const handleAddLesson = async (e) => {
     e.preventDefault();
     if (!newLesson.title || !newLesson.course || !user) {
@@ -148,8 +150,8 @@ export default function CreateLessonsSection() {
       if (editLessonId) {
         const lessonRef = doc(db, 'lessons', editLessonId);
         const updatedLesson = {
-          ...newLesson,
-          ...scoreData,
+          ...clean(newLesson),
+          ...clean(scoreData),
           updatedAt: new Date()
         };
 
@@ -164,8 +166,8 @@ export default function CreateLessonsSection() {
         setTimeout(() => alert('✅ Lección actualizada correctamente.'), 100);
       } else {
         const newLessonDoc = await addDoc(collection(db, 'lessons'), {
-          ...newLesson,
-          ...scoreData,
+          ...clean(newLesson),
+          ...clean(scoreData),
           teacherId: user.uid,
           createdAt: new Date()
         });
@@ -184,6 +186,7 @@ export default function CreateLessonsSection() {
       alert('❌ Hubo un error al guardar la lección. Intenta nuevamente.');
     }
   };
+
 
   const handleEdit = async (lesson) => {
     setEditLessonId(lesson.id);
