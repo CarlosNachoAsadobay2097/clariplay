@@ -39,6 +39,13 @@ export default function CreateLessonsSection() {
   const [showEditMessage, setShowEditMessage] = useState(false);
   const [userCourses, setUserCourses] = useState([]);
 
+  // Nuevo estado para clases teóricas y selector de pestañas
+  const [activeTab, setActiveTab] = useState("lesson"); // 'lesson' o 'theory'
+  const [theoryTitle, setTheoryTitle] = useState("");
+  const [theoryText, setTheoryText] = useState("");
+  const [theoryImage, setTheoryImage] = useState(null);
+  const [theoryClasses, setTheoryClasses] = useState([]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -68,6 +75,17 @@ export default function CreateLessonsSection() {
     return () => unsubscribe();
   }, [user]);
 
+  // Escuchar clases teóricas del usuario
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "theoryClasses"), where("createdBy", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTheoryClasses(data);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewLesson(prev => ({ ...prev, [name]: value }));
@@ -90,18 +108,12 @@ export default function CreateLessonsSection() {
 
   const uploadXmlFile = async (file, lessonId) => {
     if (!user || !user.uid) throw new Error('Usuario no autenticado');
-    const filePath = `lessons/${user.uid}/${lessonId}/${file.name}`; // ✅ Sí funciona
+    const filePath = `lessons/${user.uid}/${lessonId}/${file.name}`;
 
-    console.log('📁 Subiendo archivo a:', filePath);
     const fileRef = ref(storage, filePath);
-    try {
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      return { url, path: filePath };
-    } catch (error) {
-      console.error('❌ Error subiendo a Storage:', error.message);
-      throw error;
-    }
+    await uploadBytes(fileRef, file);
+    const url = await getDownloadURL(fileRef);
+    return { url, path: filePath };
   };
 
   const deletePreviousXmlFile = async (xmlPath) => {
@@ -123,7 +135,6 @@ export default function CreateLessonsSection() {
       title: '', course: '', description: '', instructions: '', xmlUrl: '', xmlPath: ''
     });
     setScoreData({ notes: [], audioUrl: null, xmlContent: null });
-    console.log('Formulario limpiado manualmente');
   };
 
   const handleAddLesson = async (e) => {
@@ -132,7 +143,6 @@ export default function CreateLessonsSection() {
       alert('Por favor completa todos los campos obligatorios.');
       return;
     }
-    console.log('👤 Usuario autenticado:', user.uid);
 
     try {
       if (editLessonId) {
@@ -171,11 +181,7 @@ export default function CreateLessonsSection() {
       resetForm();
     } catch (error) {
       console.error('❌ Error al guardar lección:', error.message);
-      if (error.message.includes('permission')) {
-        alert('⚠️ No tienes permisos suficientes para guardar esta lección. Revisa las reglas de Firebase Storage.');
-      } else {
-        alert('❌ Hubo un error al guardar la lección. Intenta nuevamente.');
-      }
+      alert('❌ Hubo un error al guardar la lección. Intenta nuevamente.');
     }
   };
 
@@ -233,86 +239,255 @@ export default function CreateLessonsSection() {
     }
   };
 
+  // Función para manejar subida y creación de clase teórica
+  const handleTheorySubmit = async (e) => {
+    e.preventDefault();
+    if (!user || !theoryTitle || !newLesson.course || !theoryImage) {
+      alert("Completa todos los campos para crear la clase teórica.");
+      return;
+    }
+
+    try {
+      const filePath = `theory-classes/${user.uid}/${Date.now()}_${theoryImage.name}`;
+      const imageRef = ref(storage, filePath);
+      await uploadBytes(imageRef, theoryImage);
+      const imageUrl = await getDownloadURL(imageRef);
+
+      await addDoc(collection(db, "theoryClasses"), {
+        title: theoryTitle,
+        content: theoryText,
+        imageUrl,
+        course: newLesson.course,
+        createdBy: user.uid,
+        createdAt: new Date(),
+      });
+
+      alert("✅ Clase teórica creada correctamente.");
+      setTheoryTitle("");
+      setTheoryText("");
+      setTheoryImage(null);
+    } catch (error) {
+      console.error("Error al guardar clase teórica:", error);
+      alert("❌ No se pudo guardar la clase teórica.");
+    }
+  };
+
   const groupedLessons = lessons.reduce((acc, lesson) => {
     if (!acc[lesson.course]) acc[lesson.course] = [];
     acc[lesson.course].push(lesson);
     return acc;
   }, {});
 
-  return (
-    <div className="section-block create-lesson" style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h2>{editLessonId ? 'Editar Lección' : 'Crear Lección'}</h2>
+  const handleDeleteTheoryClass = async (id, imageUrl) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta clase teórica?')) return;
 
-      {showEditMessage && (
-        <div style={{ backgroundColor: '#FFF4E5', padding: '1rem', borderLeft: '4px solid #E51B23', marginBottom: '1rem' }}>
-          <span>✏️ Los datos de la lección se han cargado en el formulario.</span>
-          <button onClick={() => setShowEditMessage(false)} style={{ float: 'right', background: 'none', border: 'none', fontSize: '1.2rem' }}>✖</button>
-        </div>
+    try {
+      // Eliminar imagen del Storage si existe
+      if (imageUrl) {
+        const imageRef = ref(storage, decodeURIComponent(new URL(imageUrl).pathname.split("/o/")[1].split("?")[0]));
+        await deleteObject(imageRef);
+      }
+
+      // Eliminar documento en Firestore
+      await deleteDoc(doc(db, "theoryClasses", id));
+
+      // Actualizar estado local
+      setTheoryClasses(prev => prev.filter(cls => cls.id !== id));
+
+      alert("🗑️ Clase teórica eliminada");
+    } catch (error) {
+      console.error("Error al eliminar clase teórica:", error);
+      alert("❌ Error al eliminar clase teórica.");
+    }
+  };
+
+
+  return (
+    <div className="section-block create-lesson lesson-form" style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto' }}>
+      <h2>Crear Contenido</h2>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <button
+          onClick={() => setActiveTab("lesson")}
+          style={{
+            background: activeTab === "lesson" ? "#E51B23" : "#ccc",
+            color: "#fff",
+            padding: '0.5rem 1rem',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          🎼 Lección
+        </button>
+        <button
+          onClick={() => setActiveTab("theory")}
+          style={{
+            background: activeTab === "theory" ? "#1D1D1B" : "#ccc",
+            color: "#fff",
+            padding: '0.5rem 1rem',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          🧠 Clase Teórica
+        </button>
+      </div>
+
+      {activeTab === "lesson" && (
+        <>
+          {showEditMessage && (
+            <div style={{ backgroundColor: '#FFF4E5', padding: '1rem', borderLeft: '4px solid #E51B23', marginBottom: '1rem' }}>
+              <span>✏️ Los datos de la lección se han cargado en el formulario.</span>
+              <button onClick={() => setShowEditMessage(false)} style={{ float: 'right', background: 'none', border: 'none', fontSize: '1.2rem' }}>✖</button>
+            </div>
+          )}
+
+          <form onSubmit={handleAddLesson} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <label>
+              Curso:
+              <select name="course" value={newLesson.course || ''} onChange={handleChange} required>
+                <option value="">Selecciona un curso</option>
+                {userCourses.map(course => (
+                  <option key={course.id} value={course.id}>{course.title}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Título de la Lección:
+              <input type="text" name="title" value={newLesson.title || ''} onChange={handleChange} required />
+            </label>
+
+            <label>
+              Descripción:
+              <textarea name="description" value={newLesson.description || ''} onChange={handleChange} />
+            </label>
+
+            <label>
+              Instrucciones para el estudiante:
+              <textarea name="instructions" value={newLesson.instructions || ''} onChange={handleChange} />
+            </label>
+
+            <label>
+              Archivo MusicXML (.xml o .musicxml):
+              <input type="file" accept=".xml,.musicxml" onChange={handleFileChange} ref={fileInputRef} />
+            </label>
+
+            <ScoreEditor xmlContent={scoreData.xmlContent} onDataChange={setScoreData} />
+
+            <button type="submit" style={{ background: '#E51B23', color: '#fff', padding: '10px', borderRadius: '6px' }}>
+              {editLessonId ? 'Actualizar Lección' : 'Guardar Lección'}
+            </button>
+
+            <button type="button" onClick={resetForm} style={{ background: '#ccc', color: '#000', padding: '10px', borderRadius: '6px' }}>
+              🧹 Borrar contenido
+            </button>
+          </form>
+        </>
       )}
 
-      <form onSubmit={handleAddLesson} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <label>
-          Curso:
-          <select name="course" value={newLesson.course || ''} onChange={handleChange} required>
-            <option value="">Selecciona un curso</option>
-            {userCourses.map(course => (
-              <option key={course.id} value={course.id}>{course.title}</option>
-            ))}
-          </select>
-        </label>
+      {activeTab === "theory" && (
+        <form onSubmit={handleTheorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: '#FFF1E6', padding: '1rem', borderRadius: '8px' }}>
+          <label>
+            Curso:
+            <select value={newLesson.course || ''} onChange={handleChange} name="course" required>
+              <option value="">Selecciona un curso</option>
+              {userCourses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          Título de la Lección:
-          <input type="text" name="title" value={newLesson.title || ''} onChange={handleChange} required />
-        </label>
+          <label>
+            Título de la clase:
+            <input type="text" value={theoryTitle} onChange={(e) => setTheoryTitle(e.target.value)} required />
+          </label>
 
-        <label>
-          Descripción:
-          <textarea name="description" value={newLesson.description || ''} onChange={handleChange} />
-        </label>
+          <label>
+            Contenido (texto):
+            <textarea value={theoryText} onChange={(e) => setTheoryText(e.target.value)} rows={5} />
+          </label>
 
-        <label>
-          Instrucciones para el estudiante:
-          <textarea name="instructions" value={newLesson.instructions || ''} onChange={handleChange} />
-        </label>
+          <label>
+            Imagen/Infografía (PNG o JPG):
+            <input type="file" accept="image/png, image/jpeg" onChange={(e) => setTheoryImage(e.target.files?.[0] || null)} required />
+          </label>
 
-        <label>
-          Archivo MusicXML (.xml o .musicxml):
-          <input type="file" accept=".xml,.musicxml" onChange={handleFileChange} ref={fileInputRef} />
-        </label>
-
-        <ScoreEditor xmlContent={scoreData.xmlContent} onDataChange={setScoreData} />
-
-        <button type="submit" style={{ background: '#E51B23', color: '#fff', padding: '10px', borderRadius: '6px' }}>
-          {editLessonId ? 'Actualizar Lección' : 'Guardar Lección'}
-        </button>
-
-        <button type="button" onClick={resetForm} style={{ background: '#ccc', color: '#000', padding: '10px', borderRadius: '6px' }}>
-          🧹 Borrar contenido
-        </button>
-      </form>
+          <button type="submit" style={{ background: '#1D1D1B', color: '#fff', padding: '10px', borderRadius: '6px' }}>
+            📚 Crear clase teórica
+          </button>
+        </form>
+      )}
 
       <div style={{ marginTop: '2rem' }}>
-        <h3>Lecciones creadas</h3>
-        {Object.entries(groupedLessons).length === 0 && <p>No hay lecciones guardadas.</p>}
+          {/* Clases teóricas */}
+          <h3>📘 Clases teóricas creadas</h3>
+          {theoryClasses.length === 0 && <p>No hay clases teóricas guardadas.</p>}
 
-        {Object.entries(groupedLessons).map(([course, courseLessons]) => (
-          <div key={course} style={{ marginBottom: '2rem', backgroundColor: '#fff' }}>
-            <h4>{userCourses.find(c => c.id === course)?.title || course}</h4>
-            {courseLessons.map(lesson => (
-              <div key={lesson.id} style={{ border: '1px solid #ddd', padding: '1rem', marginBottom: '1rem' }}>
-                <strong>{lesson.title}</strong>
-                <p>{lesson.description}</p>
-                {lesson.xmlUrl && <a href={lesson.xmlUrl} target="_blank" rel="noreferrer">📄 Ver archivo XML</a>}
-                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
-                  <button onClick={() => handleEdit(lesson)}>✏️ Editar</button>
-                  <button onClick={() => handleDelete(lesson.id)} style={{ color: 'red' }}>🗑️ Eliminar</button>
+          {theoryClasses.map((cls) => (
+            <div key={cls.id} className="theory-card">
+              <strong>{cls.title}</strong>
+              <p>{cls.content}</p>
+              {cls.imageUrl && (
+                <div className="image-container">
+                  <button
+                    onClick={() =>
+                      setTheoryClasses((prev) =>
+                        prev.map((c) =>
+                          c.id === cls.id ? { ...c, showImage: !c.showImage } : c
+                        )
+                      )
+                    }
+                    className="toggle-image-button"
+                  >
+                    {cls.showImage ? "Ocultar contenido" : "Ver contenido"}
+                  </button>
+
+                  {cls.showImage && (
+                    <img
+                      src={cls.imageUrl}
+                      alt="Infografía de la clase"
+                      className="theory-image"
+                    />
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+              )}
+              <p><strong>Curso:</strong> {userCourses.find(c => c.id === cls.course)?.title || cls.course}</p>
+
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
+                  <button
+                    onClick={() => handleDeleteTheoryClass(cls.id, cls.imageUrl)}
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
+
+            </div>
+          ))}
+
+
+          {/* Lecciones prácticas */}
+          <h3 style={{ marginTop: '2rem' }}>🎼 Lecciones creadas</h3>
+          {Object.entries(groupedLessons).length === 0 && <p>No hay lecciones guardadas.</p>}
+
+          {Object.entries(groupedLessons).map(([course, courseLessons]) => (
+            <div key={course} style={{ marginBottom: '2rem', backgroundColor: '#fff' }}>
+              <h4>{userCourses.find(c => c.id === course)?.title || course}</h4>
+              {courseLessons.map(lesson => (
+                <div key={lesson.id} style={{ border: '1px solid #ddd', padding: '1rem', marginBottom: '1rem' }}>
+                  <strong>{lesson.title}</strong>
+                  <p>{lesson.description}</p>
+                  {lesson.xmlUrl && <a href={lesson.xmlUrl} target="_blank" rel="noreferrer">📄 Ver archivo XML</a>}
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
+                    <button onClick={() => handleEdit(lesson)}>✏️ Editar</button>
+                    <button onClick={() => handleDelete(lesson.id)} >🗑️ Eliminar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
     </div>
   );
 }
