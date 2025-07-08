@@ -1,71 +1,93 @@
-import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, where, doc, setDoc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { db } from "../firebase";
+// src/components/StudentCourses.jsx
+import React, { useEffect, useState } from 'react';
+import { getAuth } from 'firebase/auth';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+} from 'firebase/firestore';
+import { db } from '../firebase';
 
-export default function CoursesSection() {
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
+export default function StudentCourses() {
+  const auth = getAuth();
+  const user = auth.currentUser;
+
   const [availableCourses, setAvailableCourses] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Cargar cursos disponibles
   useEffect(() => {
-    const auth = getAuth(); // ✅ mover aquí
+    if (!user) return;
 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    const loadCourses = async () => {
+      setLoading(true);
 
       try {
-        const enrollmentSnap = await getDocs(
-          query(collection(db, "enrollments"), where("studentId", "==", user.uid))
+        const coursesSnapshot = await getDocs(collection(db, 'courses'));
+        const allCourses = coursesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+        // Obtener inscripciones del estudiante
+        const enrollQuery = query(
+          collection(db, 'enrollments'),
+          where('studentId', '==', user.uid)
         );
-        const enrolledIds = enrollmentSnap.docs.map(doc => doc.data().course);
+        const enrollSnapshot = await getDocs(enrollQuery);
+        const enrolledCourseIds = enrollSnapshot.docs.map(doc => doc.data().courseId);
 
-        const coursesSnap = await getDocs(collection(db, "courses"));
-        const allCourses = coursesSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        const enrolled = allCourses.filter(course => enrolledIds.includes(course.id));
-        const available = allCourses.filter(course => !enrolledIds.includes(course.id));
+        // Separar cursos inscritos y disponibles
+        const enrolled = allCourses.filter(course => enrolledCourseIds.includes(course.id));
+        const available = allCourses.filter(course => !enrolledCourseIds.includes(course.id));
 
         setEnrolledCourses(enrolled);
         setAvailableCourses(available);
-      } catch (err) {
-        console.error("Error al cargar cursos:", err);
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('Error al cargar cursos:', error);
       }
-    });
 
-    return () => unsubscribe();
-  }, []);
+      setLoading(false);
+    };
+
+    loadCourses();
+  }, [user]);
 
   const handleEnroll = async (courseId) => {
-    const auth = getAuth(); // ✅ declarar aquí también
-    const user = auth.currentUser;
-    if (!user) return alert("Inicia sesión para inscribirte.");
-
-    const enrollmentId = `${user.uid}_${courseId}`;
+    if (!user) {
+      alert('Debes iniciar sesión para inscribirte');
+      return;
+    }
 
     try {
-      await setDoc(doc(db, "enrollments", enrollmentId), {
-        course: courseId,
+      const enrollRef = collection(db, 'enrollments');
+      const q = query(
+        enrollRef,
+        where('courseId', '==', courseId),
+        where('studentId', '==', user.uid)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        alert('Ya estás inscrito en este curso.');
+        return;
+      }
+
+      await addDoc(enrollRef, {
+        courseId,
         studentId: user.uid,
         enrolledAt: new Date()
       });
 
+      alert('Inscripción exitosa ✅');
+
+      // Actualizar listas sin recargar todo
       const course = availableCourses.find(c => c.id === courseId);
       setEnrolledCourses(prev => [...prev, course]);
       setAvailableCourses(prev => prev.filter(c => c.id !== courseId));
-
-      alert("✅ Te has inscrito en el curso.");
     } catch (error) {
-      console.error("Error al inscribirse:", error);
-      alert("❌ No se pudo completar la inscripción.");
+      console.error('Error al inscribirse:', error);
+      alert('Error al inscribirse. Intenta de nuevo.');
     }
   };
 
@@ -77,7 +99,7 @@ export default function CoursesSection() {
         {enrolledCourses.map((course) => (
           <div key={course.id} className="course-card enrolled">
             <h3>{course.title}</h3>
-            <p><strong>Profesor:</strong> {course.teacherName || "Profesor asignado"}</p>
+            <p><strong>Profesor:</strong> {course.teacherName || 'Profesor asignado'}</p>
             <p><strong>Instrumento:</strong> {course.instrument}</p>
             <p><strong>Nivel:</strong> {course.level}</p>
           </div>
@@ -90,14 +112,16 @@ export default function CoursesSection() {
         {availableCourses.map((course) => (
           <div key={course.id} className="course-card available">
             <h3>{course.title}</h3>
-            <p><strong>Profesor:</strong> {course.teacherName || "Profesor asignado"}</p>
+            <p><strong>Profesor:</strong> {course.teacherName || 'Profesor asignado'}</p>
             <p><strong>Instrumento:</strong> {course.instrument}</p>
             <p><strong>Nivel:</strong> {course.level}</p>
             <div className="course-buttons">
               <button className="enroll-btn" onClick={() => handleEnroll(course.id)}>
                 Inscribirse
               </button>
-              <button className="details-btn">Ver más</button>
+              <button className="details-btn">
+                Ver más
+              </button>
             </div>
           </div>
         ))}

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
-import { getDocs } from 'firebase/firestore';
+import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 
 import {
   collection,
@@ -18,9 +18,13 @@ export default function LessonsByCourse() {
   const user = auth.currentUser;
 
   const [courses, setCourses] = useState([]);
-  const [lessonsByCourse, setLessonsByCourse] = useState({}); // { courseId: [lessons] }
+  const [lessonsByCourse, setLessonsByCourse] = useState({});
+  const [selectedLesson, setSelectedLesson] = useState(null);
 
-  // Cargar cursos creados por usuario (profesor)
+  const osmdContainerRef = useRef(null);
+  const osmdInstanceRef = useRef(null);
+
+  // Cargar cursos del profesor
   useEffect(() => {
     if (!user) return;
 
@@ -33,49 +37,68 @@ export default function LessonsByCourse() {
     return () => unsubscribe();
   }, [user]);
 
-  // Para cada curso, cargar sus lecciones
-useEffect(() => {
-  if (courses.length === 0) return;
+  // Cargar lecciones por curso
+  useEffect(() => {
+    if (!user || courses.length === 0) return;
 
-  const fetchLessons = async () => {
-    let newLessonsByCourse = {};
+    const unsubscribers = [];
+
     for (const course of courses) {
       const q = query(
         collection(db, 'lessons'),
         where('courseId', '==', course.id),
         where('createdBy', '==', user.uid)
-        );
+      );
 
-      const snapshot = await getDocs(q);
-      newLessonsByCourse[course.id] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setLessonsByCourse(prev => ({
+          ...prev,
+          [course.id]: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        }));
+      });
+
+      unsubscribers.push(unsubscribe);
     }
-    console.log('Lecciones por curso:', newLessonsByCourse);
-    setLessonsByCourse(newLessonsByCourse);
-  };
 
-  fetchLessons();
-}, [courses, user?.uid]);
+    return () => unsubscribers.forEach(unsub => unsub());
+  }, [courses, user]);
 
+  // Renderizar partitura cuando se selecciona
+  useEffect(() => {
+    if (!selectedLesson || selectedLesson.type !== 'practical' || !selectedLesson.xmlFileUrl) return;
+    if (!osmdContainerRef.current) return;
 
+    const osmd = new OpenSheetMusicDisplay(osmdContainerRef.current, {
+      drawingParameters: 'compacttight',
+      autoResize: true,
+    });
 
-  // Función para eliminar lección (con confirmación)
+    osmdInstanceRef.current = osmd;
+
+    fetch(selectedLesson.xmlFileUrl)
+      .then(res => res.text())
+      .then(xml => osmd.load(xml))
+      .then(() => osmd.render())
+      .catch(err => {
+        console.error("Error al renderizar partitura:", err);
+      });
+  }, [selectedLesson]);
+
+  // Eliminar lección
   const handleDeleteLesson = async (lessonId, courseId, xmlFileUrl, imageUrl) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta lección? Esta acción no se puede deshacer.')) return;
+    if (!window.confirm('¿Estás seguro de eliminar esta lección?')) return;
 
     try {
-      // Eliminar archivo XML de storage si existe
       if (xmlFileUrl) {
         const xmlRef = ref(storage, xmlFileUrl);
         await deleteObject(xmlRef);
       }
 
-      // Eliminar imagen teórica de storage si existe
       if (imageUrl) {
         const imgRef = ref(storage, imageUrl);
         await deleteObject(imgRef);
       }
 
-      // Eliminar documento en Firestore
       const lessonDocRef = doc(db, 'lessons', lessonId);
       await deleteDoc(lessonDocRef);
 
@@ -93,7 +116,6 @@ useEffect(() => {
       {courses.length === 0 && <p>No tienes cursos creados.</p>}
 
       {courses.map(course => {
-        const isTeacher = course.createdBy === user.uid;
         const lessons = lessonsByCourse[course.id] || [];
 
         return (
@@ -107,20 +129,15 @@ useEffect(() => {
                 <strong>{lesson.title}</strong> — Tipo: {lesson.type === 'practical' ? 'Práctica' : 'Teoría'}
                 <p>{lesson.description}</p>
 
-                {isTeacher && (
-                  <>
-                    {/* Aquí puedes agregar función editar si quieres */}
-                    <button
-                      style={{ marginRight: '0.5rem', backgroundColor: '#E51B23', color: 'white', border: 'none', padding: '0.3rem 0.7rem', borderRadius: '4px', cursor: 'pointer' }}
-                      onClick={() => handleDeleteLesson(lesson.id, course.id, lesson.xmlFileUrl, lesson.imageUrl)}
-                    >
-                      Eliminar
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => handleDeleteLesson(lesson.id, course.id, lesson.xmlFileUrl, lesson.imageUrl)}
+                  style={{ marginRight: '0.5rem', backgroundColor: '#E51B23', color: 'white', border: 'none', padding: '0.3rem 0.7rem', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Eliminar
+                </button>
 
                 <button
-                  onClick={() => alert('Aquí mostrarías detalle de la lección')}
+                  onClick={() => setSelectedLesson(lesson)}
                   style={{ backgroundColor: '#1D1D1B', color: 'white', border: 'none', padding: '0.3rem 0.7rem', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Ver más
@@ -130,6 +147,69 @@ useEffect(() => {
           </div>
         );
       })}
+
+      {/* Modal de detalle de lección */}
+      {selectedLesson && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '800px',
+            width: '100%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            position: 'relative'
+          }}>
+            <h2>{selectedLesson.title}</h2>
+            <p><strong>Tipo:</strong> {selectedLesson.type === 'practical' ? 'Práctica' : 'Teoría'}</p>
+            <p>{selectedLesson.description}</p>
+
+            {/* Partitura */}
+            {selectedLesson.type === 'practical' && selectedLesson.xmlFileUrl && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4>Partitura:</h4>
+                <div ref={osmdContainerRef} style={{ width: '100%', overflowX: 'auto' }} />
+              </div>
+            )}
+
+            {/* Imagen teórica */}
+            {selectedLesson.type === 'theory' && selectedLesson.imageUrl && (
+              <img src={selectedLesson.imageUrl} alt="Imagen teórica" style={{ maxWidth: '100%', borderRadius: '6px' }} />
+            )}
+
+            <button
+              onClick={() => setSelectedLesson(null)}
+              style={{
+                maxWidth: '15%' ,
+                marginTop: '1rem',
+                backgroundColor: '#E51B23',
+                color: 'white',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
