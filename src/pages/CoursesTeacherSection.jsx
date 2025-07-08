@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getAuth } from 'firebase/auth';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 export default function CoursesTeacherSection() {
   const [courses, setCourses] = useState([]);
@@ -55,6 +56,21 @@ export default function CoursesTeacherSection() {
     }
   };
 
+  const handleDeleteCourse = async (courseId) => {
+    const confirm = window.confirm('¿Estás seguro de que deseas eliminar este curso? Esta acción no se puede deshacer.');
+
+    if (!confirm) return;
+
+    try {
+      await deleteDoc(doc(db, 'courses', courseId));
+      alert('Curso eliminado correctamente ✅');
+    } catch (error) {
+      console.error('Error al eliminar curso:', error);
+      alert('No se pudo eliminar el curso ❌');
+    }
+  };
+
+
   return (
     <div className="section-block">
       <h2>Mis Cursos</h2>
@@ -95,6 +111,10 @@ export default function CoursesTeacherSection() {
             <div className="course-header" onClick={() => toggleCourse(course.id)}>
               <strong>{course.title}</strong> — Nivel: {course.level} — Instrumento: {course.instrument}
               <span className="toggle-text">{openCourseId === course.id ? '▼ Ocultar' : '▶ Ver alumnos'}</span>
+              <button onClick={() => handleDeleteCourse(course.id)}>
+                Eliminar curso
+              </button>
+
             </div>
 
             {openCourseId === course.id && (
