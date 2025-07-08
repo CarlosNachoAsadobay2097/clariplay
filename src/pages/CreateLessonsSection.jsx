@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAuth } from 'firebase/auth';
 import { db, storage } from '../firebase';
 import ScoreEditor from '../components/ScoreEditor';  // ajusta la ruta según tu proyecto
+import LessonsByCourse from '../components/LessonsByCourse'; // Ajusta la ruta si es necesario
 
 import {
   collection,
@@ -270,6 +271,8 @@ const CreateLessonForm = () => {
           Crear lección
         </button>
       </form>
+      <hr style={{ margin: '2rem 0' }} />
+      <LessonsByCourse />
     </div>
   );
 };
