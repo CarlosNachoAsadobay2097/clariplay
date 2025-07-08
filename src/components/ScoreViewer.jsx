@@ -4,6 +4,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import "../css/main.css";
 
+//Ahora no quiere funcionar el hosting
+
 export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseId, userId }) {
   const containerRef = useRef(null);
   const osmdRef = useRef(null);
