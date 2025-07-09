@@ -1313,28 +1313,110 @@ textarea {
 /*------------------------------------
 ESTILOS PARA LA SECCION CALIFICACIONES
 ------------------------------------*/
-.lessons-table {
+.lessons-section-wrapper {
+  padding: 2rem;
+  background-color: #fff;
+}
+
+.lessons-section-title {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.lessons-section-loading,
+.lessons-section-empty {
+  font-style: italic;
+  color: #999;
+}
+
+.lessons-section-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* espacio vertical entre cards */
+}
+
+.lessons-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fffbe6;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+
+  /* Ajustes para que tome todo el ancho disponible */
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 2rem;
+  max-width: 100%;
+  box-sizing: border-box; /* para que padding no aumente el ancho */
+
+  /* Para que no se acomode uno al lado de otro */
+  display: block;
 }
 
-.lessons-table th,
-.lessons-table td {
-  border: 1px solid #ccc;
-  padding: 0.75rem;
-  text-align: left;
+
+.lessons-card-title {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
 }
 
-.lessons-table th {
+.lessons-card-type {
+  margin: 0.3rem 0;
+}
+
+.lessons-card-description {
+  font-style: italic;
+  color: #333;
+}
+
+.lessons-card-button {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
   background-color: #E51B23;
   color: white;
-  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
-.lessons-table tr:nth-child(even) {
-  background-color: #FFF1E6;
+.lessons-card-button:hover {
+  background-color: #c2151b;
 }
+
+.lessons-card-image-wrapper {
+  margin-top: 0.8rem;
+}
+
+.lessons-card-image {
+  max-width: 100%;
+  border-radius: 6px;
+  display: block;
+}
+
+.lessons-card-score {
+  margin-top: 1rem;
+}
+
+.lessons-card-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff9f5;
+  border: 1px solid #e0d7cf;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #1D1D1B;
+}
+
+.lessons-card-content h1,
+.lessons-card-content h2,
+.lessons-card-content h3 {
+  margin-top: 1rem;
+}
+
+.lessons-card-content ul,
+.lessons-card-content ol {
+  margin-left: 1.5rem;
+}
+
 
 .feedback-link {
   background: none;
