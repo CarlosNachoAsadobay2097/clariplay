@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  where,
+  getDocs,
+  doc,
+  deleteDoc
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import { getAuth } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
 
 export default function CoursesTeacherSection() {
   const [courses, setCourses] = useState([]);
   const [openCourseId, setOpenCourseId] = useState(null);
+  const [studentsByCourse, setStudentsByCourse] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: '', level: '', instrument: '' });
 
@@ -26,7 +35,61 @@ export default function CoursesTeacherSection() {
     return () => unsubscribe();
   }, [user]);
 
-  const toggleCourse = (id) => setOpenCourseId(prev => (prev === id ? null : id));
+  const toggleCourse = async (courseId) => {
+    if (openCourseId === courseId) {
+      setOpenCourseId(null);
+      return;
+    }
+
+    setOpenCourseId(courseId);
+
+    if (studentsByCourse[courseId]) return;
+
+    try {
+      const q = query(
+        collection(db, 'enrollments'),
+        where('courseId', '==', courseId)
+      );
+      const snapshot = await getDocs(q);
+
+      const students = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: data.studentId,
+          enrollmentId: docSnap.id,
+          name: data.studentName || 'Estudiante sin nombre',
+          email: data.studentEmail || '—',
+        };
+      });
+
+      setStudentsByCourse(prev => ({ ...prev, [courseId]: students }));
+    } catch (error) {
+      console.error('Error cargando estudiantes:', error);
+    }
+  };
+
+  const handleDeleteEnrollment = async (enrollmentId) => {
+    const confirm = window.confirm("¿Seguro que deseas quitar al estudiante del curso?");
+    if (!confirm) return;
+
+    try {
+      await deleteDoc(doc(db, "enrollments", enrollmentId));
+      alert("Estudiante eliminado correctamente ✅");
+
+      if (openCourseId) {
+        setStudentsByCourse(prev => {
+          const updated = { ...prev };
+          delete updated[openCourseId]; // forzar recarga
+          return updated;
+        });
+        toggleCourse(openCourseId);
+      }
+    } catch (error) {
+      console.error("Error eliminando inscripción:", error);
+      alert("No se pudo eliminar al estudiante ❌");
+    }
+  };
+
   const toggleAddForm = () => setShowAddForm(prev => !prev);
 
   const handleInputChange = (e) => {
@@ -44,9 +107,9 @@ export default function CoursesTeacherSection() {
     try {
       await addDoc(collection(db, 'courses'), {
         ...newCourse,
-        teacherId: user.uid,     // Opcional, por compatibilidad
-        createdBy: user.uid,     // Obligatorio según reglas de Firestore
-        createdAt: new Date(),   // Puedes usar serverTimestamp si prefieres
+        teacherId: user.uid,
+        createdBy: user.uid,
+        createdAt: new Date(),
       });
       setNewCourse({ title: '', level: '', instrument: '' });
       setShowAddForm(false);
@@ -57,8 +120,7 @@ export default function CoursesTeacherSection() {
   };
 
   const handleDeleteCourse = async (courseId) => {
-    const confirm = window.confirm('¿Estás seguro de que deseas eliminar este curso? Esta acción no se puede deshacer.');
-
+    const confirm = window.confirm('¿Estás seguro de que deseas eliminar este curso?');
     if (!confirm) return;
 
     try {
@@ -69,7 +131,6 @@ export default function CoursesTeacherSection() {
       alert('No se pudo eliminar el curso ❌');
     }
   };
-
 
   return (
     <div className="section-block">
@@ -85,7 +146,6 @@ export default function CoursesTeacherSection() {
             Título:
             <input type="text" name="title" value={newCourse.title} onChange={handleInputChange} />
           </label>
-
           <label>
             Nivel:
             <select name="level" value={newCourse.level} onChange={handleInputChange}>
@@ -95,12 +155,10 @@ export default function CoursesTeacherSection() {
               <option value="Avanzado">Avanzado</option>
             </select>
           </label>
-
           <label>
             Instrumento:
             <input type="text" name="instrument" value={newCourse.instrument} onChange={handleInputChange} />
           </label>
-
           <button type="submit">Agregar Curso</button>
         </form>
       )}
@@ -111,15 +169,42 @@ export default function CoursesTeacherSection() {
             <div className="course-header" onClick={() => toggleCourse(course.id)}>
               <strong>{course.title}</strong> — Nivel: {course.level} — Instrumento: {course.instrument}
               <span className="toggle-text">{openCourseId === course.id ? '▼ Ocultar' : '▶ Ver alumnos'}</span>
-              <button onClick={() => handleDeleteCourse(course.id)}>
+              <button onClick={() => handleDeleteCourse(course.id)} style={{ marginLeft: '1rem' }}>
                 Eliminar curso
               </button>
-
             </div>
 
             {openCourseId === course.id && (
               <div className="students-table-wrapper">
-                <p>No hay estudiantes inscritos aún.</p> {/* Implementaremos luego */}
+                {studentsByCourse[course.id]?.length > 0 ? (
+                  <table className="students-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentsByCourse[course.id].map((student) => (
+                        <tr key={student.id}>
+                          <td>{student.name}</td>
+                          <td>{student.email}</td>
+                          <td>
+                            <button
+                              onClick={() => handleDeleteEnrollment(student.enrollmentId)}
+                              style={{ color: 'red' }}
+                            >
+                              Quitar alumno
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p>No hay estudiantes inscritos aún.</p>
+                )}
               </div>
             )}
           </li>

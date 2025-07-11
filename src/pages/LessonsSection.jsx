@@ -1,17 +1,61 @@
 import React, { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import ScoreViewer from '../components/ScoreViewer'; // Ajusta la ruta si es necesario
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+  addDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+import { ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../firebase';
+import ScoreViewer from '../components/ScoreViewer'; // Ajusta si está en otra ruta
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMusic } from '@fortawesome/free-solid-svg-icons';
+
+// Función para subir audio y guardar metadata
+async function handleAudioUpload(audioBlob, { userId, lessonId, courseId }) {
+  if (!userId || !lessonId || !courseId) {
+    throw new Error("Faltan datos para subir audio");
+  }
+
+  // Verificar si ya existe grabación
+  const recordingsRef = collection(db, "audioRecordings");
+  const q = query(
+    recordingsRef,
+    where("studentId", "==", userId),
+    where("lessonId", "==", lessonId)
+  );
+  const snapshot = await getDocs(q);
+
+  if (!snapshot.empty) {
+    throw new Error("Ya existe una grabación para esta lección");
+  }
+
+  // Subir archivo a Firebase Storage
+  const filePath = `student-submissions/${courseId}/${lessonId}/${userId}/audio.webm`;
+  const fileRef = ref(storage, filePath);
+  await uploadBytes(fileRef, audioBlob, { contentType: "audio/webm" });
+
+  // Guardar metadata en Firestore
+  await addDoc(recordingsRef, {
+    studentId: userId,
+    lessonId,
+    courseId,
+    storagePath: filePath,
+    createdAt: serverTimestamp(),
+  });
+}
 
 export default function LessonsSection() {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  const [courses, setCourses] = useState([]); // Aquí guardamos datos completos de cursos
-  const [lessonsByCourse, setLessonsByCourse] = useState({}); // { courseId: [lessons...] }
+  const [courses, setCourses] = useState([]);
+  const [lessonsByCourse, setLessonsByCourse] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedLessonId, setSelectedLessonId] = useState(null);
 
@@ -20,7 +64,7 @@ export default function LessonsSection() {
 
     async function fetchData() {
       try {
-        // Paso 1: Obtener cursos donde el estudiante está inscrito (ids)
+        // Obtener cursos del estudiante
         const enrollmentsQuery = query(
           collection(db, 'enrollments'),
           where('studentId', '==', user.uid)
@@ -35,7 +79,7 @@ export default function LessonsSection() {
           return;
         }
 
-        // Paso 2: Obtener detalles completos de cada curso
+        // Obtener detalles de los cursos
         const coursesData = [];
         for (const courseId of courseIds) {
           const courseDoc = await getDoc(doc(db, 'courses', courseId));
@@ -45,10 +89,8 @@ export default function LessonsSection() {
         }
         setCourses(coursesData);
 
-        // Paso 3: Obtener lecciones agrupadas por cursoId
-        const lessonsMap = {}; // courseId -> [lessons]
-
-        // Consultar lecciones por lotes
+        // Obtener lecciones por curso
+        const lessonsMap = {};
         for (let i = 0; i < courseIds.length; i += 10) {
           const chunk = courseIds.slice(i, i + 10);
           const lessonsQuery = query(
@@ -56,7 +98,6 @@ export default function LessonsSection() {
             where('courseId', 'in', chunk)
           );
           const lessonsSnapshot = await getDocs(lessonsQuery);
-
           lessonsSnapshot.docs.forEach(docSnap => {
             const lesson = { id: docSnap.id, ...docSnap.data() };
             if (!lessonsMap[lesson.courseId]) {
@@ -85,15 +126,17 @@ export default function LessonsSection() {
   return (
     <div className="lessons-section-wrapper">
       <h2 className="lessons-section-title">
-        <span><FontAwesomeIcon icon={faMusic} /> </span>Mis Lecciones
+        <span><FontAwesomeIcon icon={faMusic} /></span> Mis Lecciones
       </h2>
 
-      {loading && <p className="lessons-section-loading">Cargando lecciones...</p>}
-      {!loading && courses.length === 0 && <p className="lessons-section-empty">No tienes lecciones disponibles.</p>}
+      {loading && <p>Cargando lecciones...</p>}
+      {!loading && courses.length === 0 && <p>No tienes lecciones disponibles.</p>}
 
       {courses.map(course => (
         <div key={course.id} className="course-group">
-          <h3 className="course-title">{course.title} — Nivel: {course.level} — Instrumento: {course.instrument}</h3>
+          <h3 className="course-title">
+            {course.title} — Nivel: {course.level} — Instrumento: {course.instrument}
+          </h3>
 
           <div className="lessons-section-grid">
             {(lessonsByCourse[course.id] && lessonsByCourse[course.id].length > 0) ? (
@@ -105,10 +148,8 @@ export default function LessonsSection() {
                 return (
                   <div className="lessons-card" key={lesson.id}>
                     <h4 className="lessons-card-title">{lesson.title}</h4>
-                    <p className="lessons-card-type">
-                      <strong>Tipo:</strong> {isPractical ? 'Práctica' : 'Teoría'}
-                    </p>
-                    <p className="lessons-card-description">{lesson.description}</p>
+                    <p><strong>Tipo:</strong> {isPractical ? 'Práctica' : 'Teoría'}</p>
+                    <p>{lesson.description}</p>
 
                     {(isPractical && lesson.xmlFileUrl) || (isTheory && lesson.imageUrl) ? (
                       <button
@@ -122,16 +163,24 @@ export default function LessonsSection() {
                     {isSelected && (
                       <div className="lessons-card-score">
                         {isPractical && lesson.xmlFileUrl && (
-                          <ScoreViewer xmlUrl={lesson.xmlFileUrl} />
+                          <ScoreViewer
+                            xmlUrl={lesson.xmlFileUrl}
+                            lessonId={lesson.id}
+                            courseId={course.id}
+                            userId={user.uid}
+                            onAudioUploaded={(audioBlob) =>
+                              handleAudioUpload(audioBlob, {
+                                userId: user.uid,
+                                lessonId: lesson.id,
+                                courseId: course.id,
+                              })
+                            }
+                          />
                         )}
 
                         {isTheory && lesson.imageUrl && (
                           <>
-                            <img
-                              src={lesson.imageUrl}
-                              alt="Infografía"
-                              className="lessons-card-image"
-                            />
+                            <img src={lesson.imageUrl} alt="Infografía" className="lessons-card-image" />
                           </>
                         )}
 

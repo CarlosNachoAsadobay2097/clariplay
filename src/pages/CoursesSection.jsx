@@ -7,6 +7,8 @@ import {
   query,
   where,
   addDoc,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -53,6 +55,7 @@ export default function StudentCourses() {
     loadCourses();
   }, [user]);
 
+  // ✅ Inscripción con nombre completo desde la colección `users`
   const handleEnroll = async (courseId) => {
     if (!user) {
       alert('Debes iniciar sesión para inscribirte');
@@ -73,9 +76,23 @@ export default function StudentCourses() {
         return;
       }
 
+      // Obtener los datos del estudiante desde la colección 'users'
+      const userDocRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (!userSnap.exists()) {
+        alert('No se encontraron tus datos de perfil.');
+        return;
+      }
+
+      const userData = userSnap.data();
+      const fullName = `${userData.firstName} ${userData.lastName}`;
+
       await addDoc(enrollRef, {
         courseId,
         studentId: user.uid,
+        studentName: fullName,
+        studentEmail: userData.email || user.email || 'Sin correo',
         enrolledAt: new Date()
       });
 

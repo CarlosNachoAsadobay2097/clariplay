@@ -4,8 +4,6 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import "../css/main.css";
 
-//Ahora no quiere funcionar el hosting
-
 export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseId, userId }) {
   const containerRef = useRef(null);
   const osmdRef = useRef(null);
@@ -23,7 +21,7 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
 
-  // ⚠️ Verificar si ya existe grabación
+  // Verifica si ya hay una grabación enviada
   useEffect(() => {
     const checkExistingRecording = async () => {
       if (!userId || !lessonId) return;
@@ -44,7 +42,7 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
     checkExistingRecording();
   }, [userId, lessonId]);
 
-  // Renderizar partitura
+  // Renderiza la partitura
   useEffect(() => {
     if (!xmlUrl) return;
     setLoading(true);
@@ -75,9 +73,10 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
       });
   }, [xmlUrl]);
 
-  // Dibujar waveform
+  // Dibuja la onda de audio mientras graba
   useEffect(() => {
     if (!recording || !canvasRef.current || !analyserRef.current) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const analyser = analyserRef.current;
@@ -113,6 +112,7 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
     return () => cancelAnimationFrame(animationIdRef.current);
   }, [recording]);
 
+  // Inicia grabación
   const startRecording = async () => {
     setError(null);
     setAudioUrl(null);
@@ -164,6 +164,7 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
     }
   };
 
+  // Envía la grabación al servidor
   const handleUploadClick = async () => {
     if (!audioBlobRef.current) return;
 
