@@ -112,8 +112,10 @@ const CreateLessonForm = () => {
         type,
         courseId,
         createdBy: user.uid,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        deleted: false  // << nueva propiedad importante
       });
+
 
       const lessonId = lessonRef.id;
       let fileUrl = null;

@@ -1423,7 +1423,12 @@ ESTILOS PARA LA SECCION CALIFICACIONES
   font-size: 0.95rem;
   line-height: 1.5;
   color: #1D1D1B;
+
+  /* 🔧 Nuevas propiedades para que no se rompa en móvil */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
+
 
 .lessons-card-content h1,
 .lessons-card-content h2,
@@ -1692,6 +1697,15 @@ ESTILOS PARA LA SECCION LECCIONES TEACHER
 /*----------------------------------------------------------
 ESTILOS PARA LA SECCIÓN ESTUDIANTES, CURSOS Y CALIFICACIONES
 ----------------------------------------------------------*/
+
+.course-title {
+  font-weight: bold;        /* Negrita */
+  font-size: 15pt;          /* Aproximadamente 20px */
+  color: #E51B23;          /* Negro oscuro de tu paleta */
+  margin-bottom: 0.75rem;   /* Espacio inferior */
+  line-height: 1.4;         /* Altura de línea agradable */
+}
+
 
 .student-courses-section {
   background-color: #FFF1E6;

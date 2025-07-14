@@ -8,7 +8,8 @@ import {
   where,
   onSnapshot,
   doc,
-  deleteDoc
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase';
@@ -37,7 +38,7 @@ export default function LessonsByCourse() {
     return () => unsubscribe();
   }, [user]);
 
-  // Cargar lecciones por curso
+  // Cargar lecciones por curso (solo no eliminadas)
   useEffect(() => {
     if (!user || courses.length === 0) return;
 
@@ -47,8 +48,9 @@ export default function LessonsByCourse() {
       const q = query(
         collection(db, 'lessons'),
         where('courseId', '==', course.id),
-        where('createdBy', '==', user.uid)
+        where('createdBy', '==', user.uid),
       );
+
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setLessonsByCourse(prev => ({
@@ -63,7 +65,7 @@ export default function LessonsByCourse() {
     return () => unsubscribers.forEach(unsub => unsub());
   }, [courses, user]);
 
-  // Renderizar partitura cuando se selecciona
+  // Renderizar partitura
   useEffect(() => {
     if (!selectedLesson || selectedLesson.type !== 'practical' || !selectedLesson.xmlFileUrl) return;
     if (!osmdContainerRef.current) return;
@@ -84,28 +86,37 @@ export default function LessonsByCourse() {
       });
   }, [selectedLesson]);
 
-  // Eliminar lección
-  const handleDeleteLesson = async (lessonId, courseId, xmlFileUrl, imageUrl) => {
+  // Soft delete de lección
+  const handleDeleteLesson = async (lessonId, xmlFileUrl, imageUrl) => {
     if (!window.confirm('¿Estás seguro de eliminar esta lección?')) return;
 
     try {
-      if (xmlFileUrl) {
-        const xmlRef = ref(storage, xmlFileUrl);
-        await deleteObject(xmlRef);
+      const updates = {
+        deleted: true,
+        deletedAt: serverTimestamp()
+      };
+
+      // (Opcional) eliminar archivos del Storage si se desea limpieza total:
+      try {
+        if (xmlFileUrl) {
+          const xmlRef = ref(storage, xmlFileUrl);
+          await deleteObject(xmlRef);
+        }
+
+        if (imageUrl) {
+          const imgRef = ref(storage, imageUrl);
+          await deleteObject(imgRef);
+        }
+      } catch (fileError) {
+        console.warn('No se pudo eliminar archivo de Storage:', fileError);
       }
 
-      if (imageUrl) {
-        const imgRef = ref(storage, imageUrl);
-        await deleteObject(imgRef);
-      }
+      await updateDoc(doc(db, 'lessons', lessonId), updates);
 
-      const lessonDocRef = doc(db, 'lessons', lessonId);
-      await deleteDoc(lessonDocRef);
-
-      alert('Lección eliminada correctamente.');
+      alert('Lección eliminada correctamente ✅');
     } catch (error) {
-      console.error('Error al eliminar lección:', error);
-      alert('Error al eliminar la lección.');
+      console.error('Error al marcar como eliminada:', error);
+      alert('Error al eliminar la lección ❌');
     }
   };
 
@@ -130,7 +141,7 @@ export default function LessonsByCourse() {
                 <p>{lesson.description}</p>
 
                 <button
-                  onClick={() => handleDeleteLesson(lesson.id, course.id, lesson.xmlFileUrl, lesson.imageUrl)}
+                  onClick={() => handleDeleteLesson(lesson.id, lesson.xmlFileUrl, lesson.imageUrl)}
                   style={{ marginRight: '0.5rem', backgroundColor: '#E51B23', color: 'white', border: 'none', padding: '0.3rem 0.7rem', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   Eliminar
@@ -148,7 +159,7 @@ export default function LessonsByCourse() {
         );
       })}
 
-      {/* Modal de detalle de lección */}
+      {/* Modal de detalle */}
       {selectedLesson && (
         <div style={{
           position: 'fixed',
@@ -192,7 +203,7 @@ export default function LessonsByCourse() {
             <button
               onClick={() => setSelectedLesson(null)}
               style={{
-                maxWidth: '15%' ,
+                maxWidth: '15%',
                 marginTop: '1rem',
                 backgroundColor: '#E51B23',
                 color: 'white',

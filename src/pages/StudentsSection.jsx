@@ -19,6 +19,7 @@ export default function StudentsSection() {
   const [viewingStudentId, setViewingStudentId] = useState(null);
   const [courses, setCourses] = useState([]);
   const [studentsByCourse, setStudentsByCourse] = useState({});
+  const [lessonsByCourse, setLessonsByCourse] = useState({});
   const [recordingsByStudentCourse, setRecordingsByStudentCourse] = useState({});
   const [updatedScores, setUpdatedScores] = useState({});
   const [updatedFeedbacks, setUpdatedFeedbacks] = useState({});
@@ -39,32 +40,40 @@ export default function StudentsSection() {
     fetchCourses();
   }, [user]);
 
-  const toggleCourse = async (courseId) => {
-    setExpandedCourse(expandedCourse === courseId ? null : courseId);
-    setEditingStudentId(null);
-    setViewingStudentId(null);
-
-    if (studentsByCourse[courseId]) return;
-
-    try {
-      const q = query(collection(db, 'enrollments'), where('courseId', '==', courseId));
-      const snapshot = await getDocs(q);
-      const students = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: data.studentId,
-          name: data.studentName || 'Estudiante sin nombre',
-          average: data.average ?? '-',
-        };
-      });
-      setStudentsByCourse(prev => ({ ...prev, [courseId]: students }));
-    } catch (error) {
-      console.error('Error al cargar estudiantes:', error);
-    }
+  // Función para cargar estudiantes inscritos en un curso
+  const loadStudentsByCourse = async (courseId) => {
+    const q = query(collection(db, 'enrollments'), where('courseId', '==', courseId));
+    const snapshot = await getDocs(q);
+    const students = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.studentId,
+        name: data.studentName || 'Estudiante sin nombre',
+        average: data.average ?? '-',
+      };
+    });
+    setStudentsByCourse(prev => ({ ...prev, [courseId]: students }));
   };
+
+  // Función para cargar lecciones no borradas creadas por el profesor en un curso
+  const loadLessonsByCourse = async (courseId) => {
+    const q = query(
+      collection(db, 'lessons'),
+      where('courseId', '==', courseId),
+      where('createdBy', '==', user.uid)
+    );
+    const snapshot = await getDocs(q);
+    const lessons = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(lesson => !lesson.deleted && lesson.type !== 'theory');  // <-- Aquí filtramos
+    setLessonsByCourse(prev => ({ ...prev, [courseId]: lessons }));
+    return lessons;
+  };
+
 
   const keyStudentCourse = (studentId, courseId) => `${studentId}_${courseId}`;
 
+  // Carga grabaciones no asociadas a lecciones borradas
   const loadRecordings = async (studentId, courseId) => {
     try {
       const q = query(
@@ -74,41 +83,61 @@ export default function StudentsSection() {
       );
       const snapshot = await getDocs(q);
 
-      const recordings = await Promise.all(
+      const recordingsRaw = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
-          let lessonTitle = 'Lección desconocida';
           try {
             const lessonSnap = await getDoc(doc(db, 'lessons', data.lessonId));
-            if (lessonSnap.exists()) {
-              lessonTitle = lessonSnap.data().title;
-            }
-          } catch (err) {
-            console.warn('No se pudo cargar título de lección', err);
+            if (!lessonSnap.exists()) return null;
+            const lessonData = lessonSnap.data();
+            if (lessonData.deleted) return null;  // ignorar grabaciones de lecciones borradas
+
+            const audioUrl = await getDownloadURL(ref(storage, data.storagePath));
+            return {
+              id: docSnap.id,
+              lessonId: data.lessonId,
+              lessonTitle: lessonData.title,
+              score: data.score ?? '',
+              feedback: data.feedback ?? '',
+              storagePath: data.storagePath,
+              audioUrl,
+            };
+          } catch {
+            return null;
           }
-
-          const audioUrl = await getDownloadURL(ref(storage, data.storagePath));
-
-          return {
-            id: docSnap.id,
-            lessonId: data.lessonId,
-            lessonTitle,
-            score: data.score ?? '',
-            feedback: data.feedback ?? '',
-            storagePath: data.storagePath,
-            audioUrl,
-          };
         })
       );
 
+      const recordings = recordingsRaw.filter(Boolean);
       setRecordingsByStudentCourse(prev => ({
         ...prev,
         [keyStudentCourse(studentId, courseId)]: recordings,
       }));
+
       return recordings;
     } catch (err) {
       console.error('Error al cargar grabaciones del estudiante:', err);
       return [];
+    }
+  };
+
+  const toggleCourse = async (courseId) => {
+    if (expandedCourse === courseId) {
+      setExpandedCourse(null);
+      setEditingStudentId(null);
+      setViewingStudentId(null);
+      return;
+    }
+
+    setExpandedCourse(courseId);
+    setEditingStudentId(null);
+    setViewingStudentId(null);
+
+    if (!studentsByCourse[courseId]) {
+      await loadStudentsByCourse(courseId);
+    }
+    if (!lessonsByCourse[courseId]) {
+      await loadLessonsByCourse(courseId);
     }
   };
 
@@ -132,11 +161,17 @@ export default function StudentsSection() {
     }
   };
 
+  // Calcula promedio sólo con lecciones que tienen nota válida y que no están borradas
   const calculateAverage = (studentId, courseId) => {
     const recordings = recordingsByStudentCourse[keyStudentCourse(studentId, courseId)];
     if (!recordings || recordings.length === 0) return '-';
-    const validScores = recordings.map(r => Number(r.score)).filter(score => !isNaN(score));
+
+    const validScores = recordings
+      .map(r => Number(r.score))
+      .filter(score => !isNaN(score));
+
     if (validScores.length === 0) return '-';
+
     const total = validScores.reduce((acc, score) => acc + score, 0);
     return (total / validScores.length).toFixed(2);
   };
@@ -190,7 +225,7 @@ export default function StudentsSection() {
       <div className="student-course-cards">
         {courses.map((course) => (
           <div key={course.id} className="student-course-card">
-            <div className="student-course-header" onClick={() => toggleCourse(course.id)}>
+            <div className="student-course-header" onClick={() => toggleCourse(course.id)} style={{ cursor: 'pointer' }}>
               <h3>{course.title}</h3>
               <button className="student-toggle-btn">
                 {expandedCourse === course.id ? 'Ocultar' : 'Ver estudiantes'}
@@ -235,12 +270,18 @@ export default function StudentsSection() {
                             </tr>
                           </thead>
                           <tbody>
-                            {(recordingsByStudentCourse[keyStudentCourse(student.id, course.id)] || []).length > 0 ? (
-                              recordingsByStudentCourse[keyStudentCourse(student.id, course.id)].map((recording) => {
-                                const key = `${student.id}-${recording.lessonId}`;
+                            {(lessonsByCourse[course.id] || []).length === 0 && (
+                              <tr><td colSpan="4">No hay lecciones en este curso.</td></tr>
+                            )}
+
+                            {(lessonsByCourse[course.id] || []).map((lesson) => {
+                              const recordings = recordingsByStudentCourse[keyStudentCourse(student.id, course.id)] || [];
+                              const recording = recordings.find(r => r.lessonId === lesson.id);
+
+                              if (recording) {
                                 return (
-                                  <tr key={recording.lessonId}>
-                                    <td>{recording.lessonTitle}</td>
+                                  <tr key={lesson.id}>
+                                    <td>{lesson.title}</td>
                                     <td>
                                       <audio controls src={recording.audioUrl} style={{ width: '180px' }} />
                                     </td>
@@ -254,7 +295,7 @@ export default function StudentsSection() {
                                           onChange={(e) =>
                                             setUpdatedScores((prev) => ({
                                               ...prev,
-                                              [key]: e.target.value,
+                                              [`${student.id}-${lesson.id}`]: e.target.value,
                                             }))
                                           }
                                         />
@@ -270,7 +311,7 @@ export default function StudentsSection() {
                                           onChange={(e) =>
                                             setUpdatedFeedbacks((prev) => ({
                                               ...prev,
-                                              [key]: e.target.value,
+                                              [`${student.id}-${lesson.id}`]: e.target.value,
                                             }))
                                           }
                                         />
@@ -280,15 +321,28 @@ export default function StudentsSection() {
                                     </td>
                                   </tr>
                                 );
-                              })
-                            ) : (
-                              <tr><td colSpan="4">No hay lecciones entregadas.</td></tr>
-                            )}
+                              } else {
+                                return (
+                                  <tr key={lesson.id}>
+                                    <td>{lesson.title}</td>
+                                    <td colSpan="3" style={{ fontStyle: 'italic', color: '#777' }}>
+                                      No entregado
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                            })}
                           </tbody>
                         </table>
+
                         {editingStudentId === student.id && (
                           <div className="edit-grades-buttons">
-                            <button className="student-btn save" onClick={() => handleSaveScores(student.id, course.id)}>Guardar</button>
+                            <button
+                              className="student-btn save"
+                              onClick={() => handleSaveScores(student.id, course.id)}
+                            >
+                              Guardar
+                            </button>
                             <button
                               className="student-btn cancel"
                               onClick={() => setEditingStudentId(null)}

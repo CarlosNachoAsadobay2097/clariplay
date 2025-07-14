@@ -57,27 +57,37 @@ export default function LessonsSection() {
       const lessonsData = await Promise.all(
         recordingsSnapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
-          const lessonDoc = await getDoc(doc(db, 'lessons', data.lessonId));
-          const lessonTitle = lessonDoc.exists() ? lessonDoc.data().title : 'Lección desconocida';
+          const lessonDocRef = doc(db, 'lessons', data.lessonId);
+          const lessonDoc = await getDoc(lessonDocRef);
+
+          if (!lessonDoc.exists()) return null;
+
+          const lessonData = lessonDoc.data();
+
+          // ❌ Si está borrada o es clase teórica, la excluimos
+          if (lessonData.deleted || lessonData.type === 'theory') return null;
 
           return {
             id: docSnap.id,
             lessonId: data.lessonId,
-            title: lessonTitle,
+            title: lessonData.title ?? 'Lección sin título',
             score: data.score ?? '—',
-            feedback: data.feedback ?? 'Sin feedback disponible', // asumimos que está en audioRecordings
+            feedback: data.feedback ?? 'Sin feedback disponible',
           };
         })
       );
 
+      const filteredLessons = lessonsData.filter(Boolean);
+
       setLessonsByCourse((prev) => ({
         ...prev,
-        [courseId]: lessonsData,
+        [courseId]: filteredLessons,
       }));
     } catch (error) {
       console.error('Error cargando lecciones entregadas:', error);
     }
   }
+
 
   function toggleCourse(courseId) {
     if (expandedCourseId === courseId) {

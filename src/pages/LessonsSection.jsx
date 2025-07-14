@@ -50,6 +50,14 @@ async function handleAudioUpload(audioBlob, { userId, lessonId, courseId }) {
   });
 }
 
+function linkifyText(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, url => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+}
+
+
 export default function LessonsSection() {
   const auth = getAuth();
   const user = auth.currentUser;
@@ -132,75 +140,112 @@ export default function LessonsSection() {
       {loading && <p>Cargando lecciones...</p>}
       {!loading && courses.length === 0 && <p>No tienes lecciones disponibles.</p>}
 
-      {courses.map(course => (
-        <div key={course.id} className="course-group">
-          <h3 className="course-title">
-            {course.title} — Nivel: {course.level} — Instrumento: {course.instrument}
-          </h3>
+      {courses.map(course => {
+          const lessons = lessonsByCourse[course.id] || [];
+          const practicalLessons = lessons.filter(lesson => lesson.type === 'practical');
+          const theoryLessons = lessons.filter(lesson => lesson.type === 'theory');
 
-          <div className="lessons-section-grid">
-            {(lessonsByCourse[course.id] && lessonsByCourse[course.id].length > 0) ? (
-              lessonsByCourse[course.id].map(lesson => {
-                const isSelected = selectedLessonId === lesson.id;
-                const isPractical = lesson.type === 'practical';
-                const isTheory = lesson.type === 'theory';
+          return (
+            <div key={course.id} className="course-group">
+              <h3 className="course-title">
+                {course.title} — Nivel: {course.level} — Instrumento: {course.instrument}
+              </h3>
 
-                return (
-                  <div className="lessons-card" key={lesson.id}>
-                    <h4 className="lessons-card-title">{lesson.title}</h4>
-                    <p><strong>Tipo:</strong> {isPractical ? 'Práctica' : 'Teoría'}</p>
-                    <p>{lesson.description}</p>
+              {/* Lecciones Prácticas */}
+              {practicalLessons.length > 0 && (
+                <>
+                  <h4 className="text-lg font-semibold mb-2 mt-4 text-red-600">Lecciones Prácticas</h4>
+                  <div className="lessons-section-grid">
+                    {practicalLessons.map(lesson => {
+                      const isSelected = selectedLessonId === lesson.id;
+                      return (
+                        <div className="lessons-card" key={lesson.id}>
+                          <h4 className="lessons-card-title">{lesson.title}</h4>
+                          <p><strong>Descripción:</strong> {lesson.description}</p>
+                          <p><strong>Instrucciones:</strong> {lesson.instructions}</p>
 
-                    {(isPractical && lesson.xmlFileUrl) || (isTheory && lesson.imageUrl) ? (
-                      <button
-                        onClick={() => toggleSelectedLesson(lesson.id)}
-                        className="lessons-card-button"
-                      >
-                        {isSelected ? 'Ocultar' : isPractical ? 'Ver partitura' : 'Ver infografía'}
-                      </button>
-                    ) : null}
+                          {lesson.xmlFileUrl && (
+                            <button
+                              onClick={() => toggleSelectedLesson(lesson.id)}
+                              className="lessons-card-button"
+                            >
+                              {isSelected ? 'Ocultar' : 'Ver partitura'}
+                            </button>
+                          )}
 
-                    {isSelected && (
-                      <div className="lessons-card-score">
-                        {isPractical && lesson.xmlFileUrl && (
-                          <ScoreViewer
-                            xmlUrl={lesson.xmlFileUrl}
-                            lessonId={lesson.id}
-                            courseId={course.id}
-                            userId={user.uid}
-                            onAudioUploaded={(audioBlob) =>
-                              handleAudioUpload(audioBlob, {
-                                userId: user.uid,
-                                lessonId: lesson.id,
-                                courseId: course.id,
-                              })
-                            }
-                          />
-                        )}
-
-                        {isTheory && lesson.imageUrl && (
-                          <>
-                            <img src={lesson.imageUrl} alt="Infografía" className="lessons-card-image" />
-                          </>
-                        )}
-
-                        {isTheory && lesson.content && (
-                          <div
-                            className="lessons-card-content"
-                            dangerouslySetInnerHTML={{ __html: lesson.content }}
-                          />
-                        )}
-                      </div>
-                    )}
+                          {isSelected && lesson.xmlFileUrl && (
+                            <div className="lessons-card-score">
+                              <ScoreViewer
+                                xmlUrl={lesson.xmlFileUrl}
+                                lessonId={lesson.id}
+                                courseId={course.id}
+                                userId={user.uid}
+                                onAudioUploaded={(audioBlob) =>
+                                  handleAudioUpload(audioBlob, {
+                                    userId: user.uid,
+                                    lessonId: lesson.id,
+                                    courseId: course.id,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })
-            ) : (
-              <p>No hay lecciones para este curso.</p>
-            )}
-          </div>
-        </div>
-      ))}
+                </>
+              )}
+
+              {/* Clases Teóricas */}
+              {theoryLessons.length > 0 && (
+                <>
+                  <h4 className="text-lg font-semibold mb-2 mt-6 text-green-700">Clases Teóricas</h4>
+                  <div className="lessons-section-grid">
+                    {theoryLessons.map(lesson => {
+                      const isSelected = selectedLessonId === lesson.id;
+                      return (
+                        <div className="lessons-card" key={lesson.id}>
+                          <h4 className="lessons-card-title">{lesson.title}</h4>
+                          <p><strong>Descripción:</strong> {lesson.description}</p>
+                          <p><strong>Instrucciones:</strong> {lesson.instructions}</p>
+
+                          {(lesson.imageUrl || lesson.content) && (
+                            <button
+                              onClick={() => toggleSelectedLesson(lesson.id)}
+                              className="lessons-card-button"
+                            >
+                              {isSelected ? 'Ocultar' : 'Ver contenido'}
+                            </button>
+                          )}
+
+                          {isSelected && (
+                            <div className="lessons-card-score">
+                              {lesson.imageUrl && (
+                                <img
+                                  src={lesson.imageUrl}
+                                  alt="Infografía"
+                                  className="lessons-card-image"
+                                />
+                              )}
+                              {lesson.content && (
+                                <div
+                                  className="lessons-card-content prose max-w-none mt-2"
+                                  dangerouslySetInnerHTML={{ __html: linkifyText(lesson.content) }}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+
     </div>
   );
 }
