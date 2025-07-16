@@ -49,6 +49,7 @@ export default function LessonsByCourse() {
         collection(db, 'lessons'),
         where('courseId', '==', course.id),
         where('createdBy', '==', user.uid),
+        where('deleted', '==', false) // ✅ Solo lecciones no eliminadas
       );
 
 

@@ -92,9 +92,13 @@ export default function LessonsSection() {
         for (const courseId of courseIds) {
           const courseDoc = await getDoc(doc(db, 'courses', courseId));
           if (courseDoc.exists()) {
-            coursesData.push({ id: courseId, ...courseDoc.data() });
+            const courseData = courseDoc.data();
+            if (!courseData.deleted) { // ✅ Solo incluir cursos no eliminados
+              coursesData.push({ id: courseId, ...courseData });
+            }
           }
         }
+
         setCourses(coursesData);
 
         // Obtener lecciones por curso
@@ -106,13 +110,18 @@ export default function LessonsSection() {
             where('courseId', 'in', chunk)
           );
           const lessonsSnapshot = await getDocs(lessonsQuery);
-          lessonsSnapshot.docs.forEach(docSnap => {
-            const lesson = { id: docSnap.id, ...docSnap.data() };
-            if (!lessonsMap[lesson.courseId]) {
-              lessonsMap[lesson.courseId] = [];
-            }
-            lessonsMap[lesson.courseId].push(lesson);
-          });
+            lessonsSnapshot.docs.forEach(docSnap => {
+              const lesson = { id: docSnap.id, ...docSnap.data() };
+
+              // ✅ Excluir lecciones marcadas como eliminadas
+              if (lesson.deleted) return;
+
+              if (!lessonsMap[lesson.courseId]) {
+                lessonsMap[lesson.courseId] = [];
+              }
+              lessonsMap[lesson.courseId].push(lesson);
+            });
+
         }
 
         setLessonsByCourse(lessonsMap);

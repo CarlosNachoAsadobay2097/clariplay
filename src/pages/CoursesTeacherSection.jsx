@@ -11,6 +11,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getAuth } from 'firebase/auth';
+import { serverTimestamp } from 'firebase/firestore';
+
 
 export default function CoursesTeacherSection() {
   const [courses, setCourses] = useState([]);
@@ -109,7 +111,7 @@ export default function CoursesTeacherSection() {
         ...newCourse,
         teacherId: user.uid,
         createdBy: user.uid,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
       setNewCourse({ title: '', level: '', instrument: '' });
       setShowAddForm(false);
