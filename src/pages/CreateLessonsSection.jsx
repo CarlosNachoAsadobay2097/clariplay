@@ -217,24 +217,23 @@ const CreateLessonForm = () => {
 
         {/* Práctica */}
         {type === 'practical' && (
-          <div className="score-viewer-container">
-            <label>Archivo MusicXML:</label>
-            <input
-              type="file"
-              accept=".xml,.musicxml"
-              onChange={handleXmlChange}
-            />
-            {xmlFileName && (
-              <p>Archivo seleccionado: <strong>{xmlFileName}</strong></p>
-            )}
+        <div className="score-viewer-container">
+          <label>Archivo MusicXML:</label>
+          <input
+            type="file"
+            accept=".xml,.musicxml"
+            onChange={handleXmlChange}
+          />
+          {xmlFileName && <p>Archivo seleccionado: <strong>{xmlFileName}</strong></p>}
 
-            {xmlContent && (
-              <div style={{ marginTop: '1rem' }}>
-                <ScoreEditor xmlContent={xmlContent} />
-              </div>
-            )}
-          </div>
-        )}
+          {xmlContent && (
+            <div style={{ marginTop: '1rem' }}>
+              <ScoreEditor xmlContent={xmlContent} />
+            </div>
+          )}
+        </div>
+      )}
+
 
 
         {/* Teoría */}

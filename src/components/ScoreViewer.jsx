@@ -61,7 +61,7 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
     fetch(xmlUrl)
       .then(res => res.text())
       .then(xml => osmd.load(xml))
-      .then(() => osmd.render())
+      .then(() => {osmd.render()})
       .then(() => setLoading(false))
       .catch(err => {
         console.error("❌ Error cargando partitura:", err);
@@ -209,44 +209,90 @@ export default function ScoreViewer({ xmlUrl, onAudioUploaded, lessonId, courseI
   };
 
   // ✅ Reproduce la partitura con Tone.js
-  const handlePlayScore = async () => {
-    if (!samplerRef.current) return alert("Sampler no cargado aún");
-    setPlaying(true);
+const handlePlayScore = async () => {
+  if (!samplerRef.current || !osmdRef.current) {
+    alert("Sampler no cargado aún");
+    return;
+  }
 
-    try {
-      const xmlString = await (await fetch(xmlUrl)).text();
-      const { notes, tempo } = parseMusicXMLToNotes(xmlString);
+  setPlaying(true);
 
-      await Tone.start();
-      Tone.Transport.cancel();
-      Tone.Transport.stop();
-      Tone.Transport.position = 0;
-      Tone.Transport.bpm.value = tempo || 120;
+  try {
+    const xmlString = await (await fetch(xmlUrl)).text();
+    const { notes, tempo } = parseMusicXMLToNotes(xmlString);
 
-      const part = new Tone.Part((time, noteObj) => {
-        const note = noteObj.note.replaceAll("#", "s");
-        samplerRef.current.triggerAttackRelease(note, noteObj.duration, time);
-      }, notes);
-
-      part.start(0);
-      Tone.Transport.start();
-
-      const totalDuration = notes.length > 0
-        ? notes[notes.length - 1].time + notes[notes.length - 1].duration
-        : 0;
-
-      setTimeout(() => {
-        Tone.Transport.stop();
-        setPlaying(false);
-        part.dispose();
-        console.log("✅ Fin de reproducción");
-      }, (totalDuration + 0.5) * 1000);
-
-    } catch (err) {
-      console.error("❌ Error reproduciendo partitura:", err);
+    if (!notes || notes.length === 0) {
+      console.warn("⚠️ No hay notas para reproducir");
       setPlaying(false);
+      return;
     }
-  };
+
+    await Tone.start();
+    await Tone.loaded();
+
+    const osmd = osmdRef.current;
+    const bpm = tempo || 120;
+    const delayBeforeStart = 0.2; // tiempo en segundos antes de empezar (puede ajustar esto)
+
+    Tone.Transport.cancel();
+    Tone.Transport.stop();
+    Tone.Transport.position = 0;
+    Tone.Transport.bpm.value = bpm;
+
+    osmd.cursor.reset();
+    osmd.cursor.hide(); // oculto antes de empezar
+
+    let cursorMoved = false;
+
+    const part = new Tone.Part((time, noteObj) => {
+      if (!noteObj.note || !noteObj.duration) {
+        console.warn("Nota inválida:", noteObj);
+        return;
+      }
+
+      const note = noteObj.note.replaceAll("#", "s");
+      const durSeconds = noteObj.duration * (60 / bpm);
+
+      console.log(`🎶 ${note} por ${durSeconds}s en ${time.toFixed(3)}s`);
+
+      samplerRef.current.triggerAttackRelease(note, durSeconds, time);
+
+      Tone.Draw.schedule(() => {
+        try {
+          if (!cursorMoved) {
+            osmd.cursor.show();
+            cursorMoved = true;
+          } else if (!osmd.cursor.iterator.EndReached) {
+            osmd.cursor.next();
+          }
+        } catch (err) {
+          console.warn("🎯 Error moviendo cursor:", err);
+        }
+      }, time);
+    }, notes.map(n => ({ ...n, time: n.time + delayBeforeStart }))); // ⚠️ agregamos el delay inicial a cada nota
+
+    part.start(0);
+    Tone.Transport.start("+0.1"); // empezamos el transporte con un pequeño desfase
+
+    const totalDuration =
+      notes[notes.length - 1].time + notes[notes.length - 1].duration + delayBeforeStart;
+
+    setTimeout(() => {
+      Tone.Transport.stop();
+      part.dispose();
+      osmd.cursor.reset();
+      osmd.cursor.hide();
+      setPlaying(false);
+    }, (totalDuration + 0.5) * 1000);
+  } catch (err) {
+    console.error("❌ Error reproduciendo partitura:", err);
+    setPlaying(false);
+  }
+};
+
+
+
+
 
   return (
     <div className="score-viewer-container">

@@ -1,3 +1,7 @@
+import * as Tone from 'tone';
+import { sampler, isSamplerLoaded } from './sampler'; // Asegúrate de que estas funciones estén definidas
+import { parseMusicXMLToNotes } from './parseMusicXMLToNotes';
+
 export async function playMusicXML(xmlString) {
   if (!isSamplerLoaded) {
     console.warn("⏳ Esperando que los samples se carguen...");
@@ -37,37 +41,29 @@ export async function playMusicXML(xmlString) {
 
     const notePart = note.slice(0, -1);
     const octave = note.slice(-1);
-
     let normalized = flatToSharp[notePart] || notePart;
-    normalized = normalized.replaceAll("#", "s");
+    normalized = normalized.replaceAll("#", "s"); // ej. C#4 => Cs4
 
     return normalized + octave;
   }
 
+  // Reproducimos las notas programando su activación con schedule
   notes.forEach(({ time, note, duration }) => {
-    const playTime = time * (60 / Tone.Transport.bpm.value);
-    const durSeconds = duration * (60 / Tone.Transport.bpm.value);
-
+    const playTime = time; // Tone.js ya lo interpreta en beats
     const cleanNoteName = normalizeNoteName(note);
 
-    sampler.triggerAttackRelease(cleanNoteName, durSeconds, playTime);
-
     Tone.Transport.schedule((scheduledTime) => {
-      sampler.triggerAttackRelease(cleanNoteName, durSeconds, scheduledTime);
+      sampler.triggerAttackRelease(cleanNoteName, duration, scheduledTime);
     }, playTime);
   });
 
   const lastNote = notes[notes.length - 1];
   const endTimeInBeats = lastNote.time + lastNote.duration;
-  const endTimeInSeconds = endTimeInBeats * (60 / Tone.Transport.bpm.value);
-
-  console.log("Última nota:", lastNote);
-  console.log("Tiempo final estimado (s):", endTimeInSeconds);
 
   Tone.Transport.scheduleOnce(() => {
     Tone.Transport.stop();
     console.log("⏹️ Reproducción terminada");
-  }, endTimeInSeconds + 0.5);
+  }, endTimeInBeats + 0.5);
 
   Tone.Transport.start();
 }
